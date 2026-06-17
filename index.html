@@ -1,0 +1,653 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Tezhhomayaa" />
+    <meta name="application-name" content="Tezhhomayaa" />
+    <meta name="theme-color" content="#c5a059" />
+    <meta name="description" content="B2B Wholesale CRM — Tezhhomayaa Malaysia Fashion Show 2026" />
+    <meta name="msapplication-TileColor" content="#080808" />
+    <meta name="msapplication-TileImage" content="/icons/icon-144x144.png" />
+    <link rel="manifest" href="/manifest.json" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
+    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <title>Tezhhomayaa Wholesale CRM</title>
+  </head>
+  <body>
+
+    <!-- Toast Notification -->
+    <div id="toast" class="toast" role="alert" aria-live="polite"></div>
+
+    <div id="app" class="app-container">
+
+      <!-- ── Sidebar ─────────────────────────────────── -->
+      <aside class="sidebar">
+        <div class="brand">
+          <h1>Tezhhomayaa</h1>
+          <p>Wholesale CRM</p>
+        </div>
+        <ul class="nav-menu">
+          <li><a class="nav-link" data-target="dashboard-view">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+            Dashboard
+          </a></li>
+          <li><a class="nav-link" data-target="search-view">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            Product Search
+          </a></li>
+          <li><a class="nav-link" data-target="builder-view">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/></svg>
+            Order Builder
+            <span id="builder-nav-badge" class="nav-badge hidden">0</span>
+          </a></li>
+          <li><a class="nav-link" data-target="quote-view">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+            Buyer Quote
+          </a></li>
+
+          <li class="nav-section-label">CRM</li>
+
+          <li><a class="nav-link" data-target="buyers-view">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg>
+            Buyers
+          </a></li>
+          <li><a class="nav-link" data-target="orders-view">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="2"/></svg>
+            Orders
+          </a></li>
+          <li><a class="nav-link" data-target="archived-view">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="20" height="5" rx="2"/><path d="M4 9v9a2 2 0 002 2h12a2 2 0 002-2V9"/><path d="M10 13h4"/></svg>
+            Archived Orders
+          </a></li>
+          <li><a class="nav-link" data-target="reports-view">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+            Reports
+          </a></li>
+        </ul>
+
+        <div class="sidebar-footer">
+          <div class="currency-selector">
+            <label for="global-currency">Currency</label>
+            <select id="global-currency">
+              <option value="USD">USD ($)</option>
+              <option value="AED">AED (د.إ)</option>
+              <option value="INR">INR (₹)</option>
+              <option value="MYR">MYR (RM)</option>
+              <option value="EUR">EUR (€)</option>
+            </select>
+          </div>
+        </div>
+      </aside>
+
+      <!-- ── Main Content ────────────────────────────── -->
+      <main class="main-content">
+        <header class="header">
+          <div>
+            <h2 id="view-title">Dashboard</h2>
+            <p id="view-subtitle" class="view-subtitle"></p>
+          </div>
+          <div class="header-actions" id="header-actions"></div>
+        </header>
+
+        <!-- ══ DASHBOARD VIEW ══════════════════════════ -->
+        <section id="dashboard-view" class="view active">
+
+          <div class="stat-grid" id="stat-grid">
+            <div class="stat-card">
+              <div class="stat-icon stat-icon--blue">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
+              </div>
+              <div class="stat-body">
+                <div class="stat-label">Total Buyers</div>
+                <div class="stat-value" id="stat-buyers">0</div>
+              </div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-icon stat-icon--gold">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+              </div>
+              <div class="stat-body">
+                <div class="stat-label">Total Quotes</div>
+                <div class="stat-value" id="stat-quotes">0</div>
+              </div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-icon stat-icon--green">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>
+              </div>
+              <div class="stat-body">
+                <div class="stat-label">Total Revenue</div>
+                <div class="stat-value currency" id="stat-revenue">$0</div>
+              </div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-icon stat-icon--purple">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
+              </div>
+              <div class="stat-body">
+                <div class="stat-label">Total Profit</div>
+                <div class="stat-value currency" id="stat-profit">$0</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Quick Access Buttons -->
+          <div class="dash-quick-actions" style="margin-bottom:var(--spacing-xl)">
+            <button class="quick-btn" data-target="search-view">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+              Product Search
+            </button>
+            <button class="quick-btn" data-target="builder-view">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/></svg>
+              Order Builder
+            </button>
+            <button class="quick-btn" data-target="quote-view">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+              Buyer Quote
+            </button>
+            <button class="quick-btn" data-target="orders-view">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="2"/></svg>
+              CRM Orders
+            </button>
+            <button class="quick-btn" data-target="reports-view">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+              Reports
+            </button>
+          </div>
+
+          <div class="dashboard-grid">
+            <!-- Recent Quotes -->
+            <div class="dash-panel">
+              <h3 class="dash-panel-title">Recent Quotes</h3>
+              <div class="table-container">
+                <table class="data-table">
+                  <thead><tr><th>Quote #</th><th>Buyer</th><th>Country</th><th>Date</th><th>Total</th></tr></thead>
+                  <tbody id="dash-recent-quotes"><tr><td colspan="5" class="empty-state">No quotes yet</td></tr></tbody>
+                </table>
+              </div>
+            </div>
+
+            <!-- Top Products -->
+            <div class="dash-panel">
+              <h3 class="dash-panel-title">Top Products</h3>
+              <div class="table-container">
+                <table class="data-table">
+                  <thead><tr><th>Product</th><th>Revenue</th><th>Units</th></tr></thead>
+                  <tbody id="dash-top-products"><tr><td colspan="3" class="empty-state">No data yet</td></tr></tbody>
+                </table>
+              </div>
+            </div>
+
+            <!-- Top Countries -->
+            <div class="dash-panel">
+              <h3 class="dash-panel-title">Top Countries</h3>
+              <div id="dash-countries-chart" class="countries-chart"></div>
+            </div>
+
+            <!-- Margin Overview -->
+            <div class="dash-panel">
+              <h3 class="dash-panel-title">Financials Overview</h3>
+              <div id="dash-financials" class="financials-grid">
+                <div class="fin-row"><span class="fin-label">Total Cost</span><span class="fin-val currency" id="dash-cost">$0</span></div>
+                <div class="fin-row"><span class="fin-label">Total Revenue</span><span class="fin-val currency" id="dash-revenue2">$0</span></div>
+                <div class="fin-row fin-row--highlight"><span class="fin-label">Total Profit</span><span class="fin-val currency" id="dash-profit2">$0</span></div>
+                <div class="fin-row fin-row--highlight"><span class="fin-label">Overall Margin</span><span class="fin-val" id="dash-margin">0%</span></div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ══ PRODUCT SEARCH VIEW ═════════════════════ -->
+        <section id="search-view" class="view">
+          <div class="filters-bar">
+            <div class="filter-group">
+              <label>Search</label>
+              <input type="text" id="search-input" placeholder="Product or style code...">
+            </div>
+            <div class="filter-group">
+              <label>Category</label>
+              <select id="filter-category"><option value="">All</option></select>
+            </div>
+            <div class="filter-group">
+              <label>Design</label>
+              <select id="filter-design"><option value="">All</option></select>
+            </div>
+            <div class="filter-group">
+              <label>Colour</label>
+              <select id="filter-colour"><option value="">All</option></select>
+            </div>
+            <div class="filter-group">
+              <label>Style Code</label>
+              <select id="filter-stylecode"><option value="">All</option></select>
+            </div>
+          </div>
+          <div class="table-container">
+            <table class="data-table">
+              <thead><tr>
+                <th>Product</th><th>Design</th><th>Colour</th><th>Style Code</th>
+                <th>Category</th><th>Fabric</th><th>Cost</th><th>Final Cost</th>
+                <th>Retail</th><th>WS 50</th><th>WS 40</th><th>WS 30</th>
+              </tr></thead>
+              <tbody id="product-table-body"></tbody>
+            </table>
+          </div>
+        </section>
+
+        <!-- ══ ORDER BUILDER VIEW ══════════════════════ -->
+        <section id="builder-view" class="view">
+          <div class="order-builder-form">
+            <h3>Add Items to Order</h3>
+            <br>
+            <div class="form-group">
+              <div class="filter-group" style="flex:1">
+                <label>1. Select Product</label>
+                <select id="builder-cat-product"><option value="">Select Product...</option></select>
+              </div>
+              <div class="filter-group" style="flex:1">
+                <label>2. Select Design</label>
+                <select id="builder-cat-design" disabled><option value="">Select Design...</option></select>
+              </div>
+              <div class="filter-group" style="flex:1">
+                <label>3. Select Colour</label>
+                <select id="builder-cat-colour" disabled><option value="">Select Colour...</option></select>
+              </div>
+            </div>
+
+            <div class="costing-panel">
+              <div class="costing-section">
+                <h4 class="panel-section-title gold">Product Specifications &amp; Costing</h4>
+                <div class="costing-grid costing-grid--3">
+                  <div><label>Style Code</label><div id="info-stylecode" class="info-value">—</div></div>
+                  <div><label>Fabric</label><div id="info-fabric" class="info-value">—</div></div>
+                  <div><label>Costing With Admin</label><div id="info-cost" class="info-value currency">—</div></div>
+                  <div><label>Final Cost (Logistics)</label><div id="info-finalcost" class="info-value currency">—</div></div>
+                  <div><label>Retail Price</label><div id="info-retail" class="info-value currency">—</div></div>
+                  <div><label>Selected Wholesale Price</label><div id="info-selected-ws" class="info-value currency gold-text large">—</div></div>
+                </div>
+              </div>
+              <div class="costing-section">
+                <h4 class="panel-section-title blue">Margin Analysis (Per Unit)</h4>
+                <div class="costing-grid costing-grid--2">
+                  <div><label>Profit Per Unit</label><div id="info-profit" class="info-value currency green-text large">—</div></div>
+                  <div><label>Margin %</label><div id="info-margin" class="info-value green-text large">—</div></div>
+                </div>
+              </div>
+            </div>
+
+            <div class="form-group" style="align-items:flex-end; margin-top:1rem">
+              <div class="filter-group">
+                <label>4. Wholesale Tier</label>
+                <select id="builder-tier" disabled>
+                  <option value="wholesale50">Wholesale 50</option>
+                  <option value="wholesale40">Wholesale 40</option>
+                  <option value="wholesale30">Wholesale 30</option>
+                </select>
+              </div>
+              <div class="filter-group">
+                <label>5. Quantity</label>
+                <input type="number" id="builder-qty" min="1" value="1" style="width:80px" disabled>
+              </div>
+              <div class="filter-group" style="flex-grow:1; align-items:flex-end">
+                <button id="builder-add-btn" class="primary-btn" disabled>+ Add to Order</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="clear-all-bar">
+            <button id="builder-clear-all" class="clear-all-btn">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+              Clear All
+            </button>
+          </div>
+          <div class="table-container">
+            <table class="data-table">
+              <thead><tr>
+                <th>#</th><th>Product</th><th>Design</th><th>Colour</th><th>Tier</th>
+                <th>Cost</th><th>Selling Price</th><th>Qty</th>
+                <th>Line Total</th><th>Profit</th><th>Profit %</th>
+                <th class="actions-col">Actions</th>
+              </tr></thead>
+              <tbody id="builder-table-body"></tbody>
+            </table>
+          </div>
+          <div class="summary-panel">
+            <div style="text-align:right">
+              <span style="color:var(--text-secondary); margin-right:1rem">Total Order Value:</span>
+              <span id="builder-total" class="summary-total">$0.00</span>
+            </div>
+          </div>
+        </section>
+
+        <!-- ══ EDIT ITEM MODAL ══════════════════════════ -->
+        <div id="edit-modal-overlay" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="edit-modal-title">
+          <div class="modal-box">
+            <div class="modal-header">
+              <h3 id="edit-modal-title">Edit Order Item</h3>
+              <button id="edit-modal-close" class="icon-btn" aria-label="Close">✕</button>
+            </div>
+            <div class="modal-body">
+              <div class="modal-row">
+                <div class="filter-group" style="flex:1">
+                  <label>Product</label>
+                  <select id="edit-product"><option value="">Select...</option></select>
+                </div>
+                <div class="filter-group" style="flex:1">
+                  <label>Design</label>
+                  <select id="edit-design" disabled><option value="">Select...</option></select>
+                </div>
+                <div class="filter-group" style="flex:1">
+                  <label>Colour</label>
+                  <select id="edit-colour" disabled><option value="">Select...</option></select>
+                </div>
+              </div>
+              <div class="modal-row">
+                <div class="filter-group">
+                  <label>Wholesale Tier</label>
+                  <select id="edit-tier">
+                    <option value="wholesale50">Wholesale 50</option>
+                    <option value="wholesale40">Wholesale 40</option>
+                    <option value="wholesale30">Wholesale 30</option>
+                  </select>
+                </div>
+                <div class="filter-group">
+                  <label>Quantity</label>
+                  <input type="number" id="edit-qty" min="1" value="1" style="width:90px">
+                </div>
+                <div class="filter-group" style="flex:1">
+                  <label>Unit Price (preview)</label>
+                  <div id="edit-unit-price-preview" style="padding-top:8px; font-family:monospace; color:var(--accent-gold)">—</div>
+                </div>
+              </div>
+            </div>
+            <div class="modal-footer">
+              <button id="edit-modal-cancel" class="secondary-btn">Cancel</button>
+              <button id="edit-modal-save" class="primary-btn">Save Changes</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- ══ DELETE CONFIRM MODAL ═════════════════════ -->
+        <div id="delete-modal-overlay" class="modal-overlay hidden" role="dialog" aria-modal="true">
+          <div class="modal-box modal-box--sm">
+            <div class="modal-header">
+              <h3>Confirm Delete</h3>
+            </div>
+            <div class="modal-body">
+              <p id="delete-modal-msg" style="color:var(--text-secondary); font-size:0.9rem; line-height:1.6"></p>
+            </div>
+            <div class="modal-footer">
+              <button id="delete-modal-cancel" class="secondary-btn">Cancel</button>
+              <button id="delete-modal-confirm" class="primary-btn" style="background:#e04040">Delete</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- ══ BUYER QUOTE VIEW ════════════════════════ -->
+        <section id="quote-view" class="view">
+          <div class="quote-grid">
+            <div class="quote-buyer-info">
+              <h3 style="margin-bottom:1rem">Buyer Details</h3>
+              <div class="filter-group"><label>Buyer Name</label><input type="text" id="quote-name" placeholder="John Doe"></div>
+              <div class="filter-group"><label>Company</label><input type="text" id="quote-company" placeholder="Aurelia Boutiques"></div>
+              <div class="filter-group"><label>Country</label><input type="text" id="quote-country" placeholder="Malaysia"></div>
+              <div class="filter-group">
+                <label>Quote Status</label>
+                <select id="quote-status">
+                  <option value="Draft">Draft</option>
+                  <option value="Sent">Sent</option>
+                  <option value="Confirmed">Confirmed</option>
+                  <option value="Cancelled">Cancelled</option>
+                </select>
+              </div>
+              <br>
+              <button id="save-quote-btn" class="primary-btn" style="width:100%">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+                Save Quote to CRM
+              </button>
+              <button id="print-quote-btn" class="print-btn" style="width:100%">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+                Print / Export PDF
+              </button>
+              <p id="quote-save-hint" class="save-hint">Add buyer name &amp; at least one item to save.</p>
+            </div>
+
+            <div class="quote-document">
+              <div class="quote-doc-inner">
+                <div class="quote-doc-header">
+                  <h2 class="gold-text">Formal Quotation</h2>
+                  <p id="doc-buyer-info" style="color:var(--text-secondary); font-size:0.85rem">Please enter buyer details.</p>
+                </div>
+                <div class="table-container">
+                  <table class="data-table">
+                    <thead><tr><th>Product</th><th>Style Code</th><th>Tier</th><th>Qty</th><th>Unit Price</th><th>Total</th></tr></thead>
+                    <tbody id="quote-table-body"></tbody>
+                  </table>
+                </div>
+                <div class="summary-panel" style="flex-direction:column; align-items:flex-end; gap:0.5rem; margin-top:2rem">
+                  <div class="summary-row"><span>Items:</span><span id="quote-item-count" style="font-weight:500">0</span></div>
+                  <div class="summary-row"><span>Total Cost:</span><span id="quote-total-cost" class="currency" style="font-weight:500">$0.00</span></div>
+                  <div class="summary-row"><span>Total Selling Value:</span><span id="quote-total-selling" class="currency" style="font-weight:500">$0.00</span></div>
+                  <div class="summary-row green-text"><span>Total Profit:</span><span id="quote-total-profit" class="currency" style="font-weight:500">$0.00</span></div>
+                  <div class="summary-row green-text"><span>Overall Margin %:</span><span id="quote-overall-margin" style="font-weight:500">0.00%</span></div>
+                  <div class="summary-row summary-row--total">
+                    <span>Grand Total:</span>
+                    <span id="quote-grand-total" class="summary-total">$0.00</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ══ BUYERS VIEW ═════════════════════════════ -->
+        <section id="buyers-view" class="view">
+          <div class="table-container">
+            <table class="data-table">
+              <thead><tr>
+                <th>Buyer Name</th><th>Company</th><th>Country</th>
+                <th>Quotes</th><th>Total Revenue</th><th>Total Profit</th>
+                <th>First Seen</th><th>Last Seen</th><th class="actions-col">Actions</th>
+              </tr></thead>
+              <tbody id="buyers-table-body"><tr><td colspan="9" class="empty-state">No buyers yet. Save a quote to add buyers.</td></tr></tbody>
+            </table>
+          </div>
+
+          <!-- Buyer History Drawer -->
+          <div id="buyer-drawer" class="buyer-drawer hidden">
+            <div class="drawer-header">
+              <h3 id="drawer-buyer-name">Buyer History</h3>
+              <button id="drawer-close" class="icon-btn" aria-label="Close">✕</button>
+            </div>
+            <div class="table-container">
+              <table class="data-table">
+                <thead><tr><th>Quote #</th><th>Date</th><th>Items</th><th>Revenue</th><th>Profit</th><th>Margin</th></tr></thead>
+                <tbody id="drawer-quotes-body"></tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- ══ ORDERS VIEW ═════════════════════════════ -->
+        <section id="orders-view" class="view">
+          <div class="filters-bar">
+            <div class="filter-group">
+              <label>Search Buyer</label>
+              <input type="text" id="orders-search" placeholder="Buyer name...">
+            </div>
+          </div>
+          <div class="table-container">
+            <table class="data-table">
+              <thead><tr>
+                <th>Quote #</th><th>Date</th><th>Buyer</th><th>Company</th>
+                <th>Country</th><th>Status</th><th>Items</th><th>Revenue</th><th>Cost</th>
+                <th>Profit</th><th>Margin %</th><th class="actions-col">Actions</th>
+              </tr></thead>
+              <tbody id="orders-table-body"><tr><td colspan="12" class="empty-state">No orders yet. Save a quote to get started.</td></tr></tbody>
+            </table>
+          </div>
+
+          <!-- Order expand drawer -->
+          <div id="order-drawer" class="buyer-drawer hidden">
+            <div class="drawer-header">
+              <div style="display:flex; flex-direction:column; gap:4px">
+                <h3 id="order-drawer-title">Order Details</h3>
+                <div style="display:flex; gap:8px; flex-wrap:wrap">
+                  <button id="order-load-builder-btn" class="load-builder-btn">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/></svg>
+                    Load into Builder
+                  </button>
+                </div>
+              </div>
+              <button id="order-drawer-close" class="icon-btn" aria-label="Close">✕</button>
+            </div>
+            <div class="table-container">
+              <table class="data-table">
+                <thead><tr><th>Product</th><th>Style Code</th><th>Tier</th><th>Qty</th><th>Unit Price</th><th>Final Cost</th><th>Line Total</th><th>Profit</th></tr></thead>
+                <tbody id="order-drawer-items"></tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- ══ ARCHIVED VIEW ═══════════════════════════ -->
+        <section id="archived-view" class="view">
+          <div class="table-container">
+            <table class="data-table">
+              <thead><tr>
+                <th>Quote #</th><th>Date</th><th>Buyer</th><th>Company</th>
+                <th>Country</th><th>Status</th><th>Items</th><th>Revenue</th>
+                <th>Archived Date</th><th class="actions-col">Actions</th>
+              </tr></thead>
+              <tbody id="archived-table-body"><tr><td colspan="10" class="empty-state">No archived orders.</td></tr></tbody>
+            </table>
+          </div>
+        </section>
+
+        <!-- ══ REPORTS VIEW ════════════════════════════ -->
+        <section id="reports-view" class="view">
+          <div class="reports-grid">
+            <div class="dash-panel">
+              <h3 class="dash-panel-title">Top Products by Revenue</h3>
+              <div id="reports-products-chart" class="bar-chart-container"></div>
+            </div>
+            <div class="dash-panel">
+              <h3 class="dash-panel-title">Revenue by Country</h3>
+              <div id="reports-countries-chart" class="bar-chart-container"></div>
+            </div>
+            <div class="dash-panel" style="grid-column: 1 / -1">
+              <h3 class="dash-panel-title">All-Time Financial Summary</h3>
+              <div id="reports-financials" class="reports-fin-grid"></div>
+            </div>
+          </div>
+        </section>
+
+      </main>
+    </div>
+
+    <!-- ══ QUOTE EDIT MODAL (CRM Orders) ═══════════════════════ -->
+    <div id="quote-edit-modal" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="qe-modal-title">
+      <div class="modal-box modal-box--sm" style="max-width:460px">
+        <div class="modal-header">
+          <h3 id="qe-modal-title">Edit Quote</h3>
+          <button id="qe-close" class="icon-btn" aria-label="Close">✕</button>
+        </div>
+        <div class="modal-body">
+          <div class="filter-group"><label>Buyer Name</label><input type="text" id="qe-buyer-name" placeholder="Buyer Name"></div>
+          <div class="filter-group"><label>Company</label><input type="text" id="qe-company" placeholder="Company"></div>
+          <div class="filter-group"><label>Country</label><input type="text" id="qe-country" placeholder="Country"></div>
+          <div class="filter-group">
+            <label>Status</label>
+            <select id="qe-status">
+              <option value="Draft">Draft</option>
+              <option value="Sent">Sent</option>
+              <option value="Confirmed">Confirmed</option>
+              <option value="Cancelled">Cancelled</option>
+            </select>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button id="qe-cancel" class="secondary-btn">Cancel</button>
+          <button id="qe-save" class="primary-btn">Save Changes</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ BUYER EDIT MODAL ════════════════════════════ -->
+    <div id="buyer-edit-modal" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="be-modal-title">
+      <div class="modal-box modal-box--sm" style="max-width:460px">
+        <div class="modal-header">
+          <h3 id="be-modal-title">Edit Buyer</h3>
+          <button id="be-close" class="icon-btn" aria-label="Close">✕</button>
+        </div>
+        <div class="modal-body">
+          <div class="filter-group"><label>Buyer Name</label><input type="text" id="be-buyer-name" placeholder="Buyer Name"></div>
+          <div class="filter-group"><label>Company</label><input type="text" id="be-company" placeholder="Company"></div>
+          <div class="filter-group"><label>Country</label><input type="text" id="be-country" placeholder="Country"></div>
+        </div>
+        <div class="modal-footer">
+          <button id="be-cancel" class="secondary-btn">Cancel</button>
+          <button id="be-save" class="primary-btn">Save Changes</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ BUYER DELETE MODAL ══════════════════════════ -->
+    <div id="buyer-delete-modal" class="modal-overlay hidden" role="dialog" aria-modal="true">
+      <div class="modal-box modal-box--sm">
+        <div class="modal-header">
+          <h3>Delete Buyer</h3>
+          <button id="bd-close" class="icon-btn" aria-label="Close">✕</button>
+        </div>
+        <div class="modal-body">
+          <p id="bd-msg" style="color:var(--text-secondary); font-size:0.9rem; line-height:1.6"></p>
+        </div>
+        <div class="modal-footer" style="flex-wrap:wrap; gap:10px">
+          <button id="bd-cancel" class="secondary-btn">Cancel</button>
+          <button id="bd-archive" class="primary-btn">Archive</button>
+          <button id="bd-delete" class="primary-btn" style="background:#e04040">Permanently Delete</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Mobile Bottom Navigation -->
+    <nav class="mobile-bottom-nav" aria-label="Main navigation">
+      <a class="mobile-nav-link" data-target="dashboard-view" aria-label="Dashboard">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+        <span>Home</span>
+      </a>
+      <a class="mobile-nav-link" data-target="builder-view" aria-label="Order Builder">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/></svg>
+        <span>Builder</span>
+      </a>
+      <a class="mobile-nav-link" data-target="quote-view" aria-label="Buyer Quote">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+        <span>Quote</span>
+      </a>
+      <a class="mobile-nav-link" data-target="buyers-view" aria-label="Buyers">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
+        <span>Buyers</span>
+      </a>
+      <a class="mobile-nav-link" data-target="orders-view" aria-label="Orders">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="2"/></svg>
+        <span>Orders</span>
+      </a>
+    </nav>
+
+    <!-- PWA Install Banner -->
+    <div id="pwa-install-banner" style="display:none;" role="alert">
+      <div class="pwa-banner-content">
+        <img src="/icons/icon-72x72.png" alt="App icon" width="40" height="40" style="border-radius:8px">
+        <div><strong>Install Tezhhomayaa CRM</strong><p>Offline access &amp; Add to Home Screen</p></div>
+        <button id="pwa-install-btn" class="primary-btn" style="white-space:nowrap">Install</button>
+        <button id="pwa-dismiss-btn" aria-label="Dismiss" style="background:none;border:none;color:#fff;font-size:1.2rem;cursor:pointer;padding:4px">✕</button>
+      </div>
+    </div>
+
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>

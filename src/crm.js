@@ -1,0 +1,195 @@
+// ============================================================
+// crm.js — CRM business logic for Tezhhomayaa Wholesale CRM
+// ============================================================
+
+import { db_quotes, db_buyers } from './db.js';
+
+// ── Quote number generator ────────────────────────────────
+function generateQuoteNumber() {
+  const now = new Date();
+  const ymd = now.toISOString().slice(0, 10).replace(/-/g, '');
+  const rand = String(Math.floor(Math.random() * 9000) + 1000);
+  return `TZH-${ymd}-${rand}`;
+}
+
+// ── Save a Quote + upsert Buyer ──────────────────────────
+export async function saveQuote({ buyerName, company, country, currency, items, totalCost, totalValue, totalProfit, marginPct }) {
+  if (!buyerName || items.length === 0) {
+    throw new Error('Buyer name and at least one item are required.');
+  }
+
+  const quoteNumber = generateQuoteNumber();
+  const date = new Date().toISOString();
+
+  // 1. Save quote
+  const quoteRecord = {
+    quoteNumber, date,
+    buyerName, company, country, currency,
+    items, totalCost, totalValue, totalProfit, marginPct
+  };
+  const quoteId = await db_quotes.add(quoteRecord);
+
+  // 2. Upsert buyer
+  const existingBuyers = await db_buyers.getByName(buyerName);
+  if (existingBuyers.length > 0) {
+    const buyer = existingBuyers[0];
+    buyer.company     = company || buyer.company;
+    buyer.country     = country || buyer.country;
+    buyer.lastSeen    = date;
+    buyer.totalQuotes += 1;
+    buyer.totalRevenue += totalValue;
+    buyer.totalProfit  += totalProfit;
+    await db_buyers.put(buyer);
+  } else {
+    await db_buyers.add({
+      name: buyerName, company, country,
+      firstSeen: date, lastSeen: date,
+      totalQuotes: 1,
+      totalRevenue: totalValue,
+      totalProfit: totalProfit,
+    });
+  }
+
+  return { quoteId, quoteNumber };
+}
+
+// ── Dashboard Report ─────────────────────────────────────
+export async function getReport() {
+  const [allDbQuotes, allDbBuyers] = await Promise.all([
+    db_quotes.getAll(),
+    db_buyers.getAll(),
+  ]);
+
+  const quotes = allDbQuotes.filter(q => !q.archived);
+  const archivedQuotes = allDbQuotes.filter(q => q.archived).sort((a, b) => new Date(b.archivedAt || b.date) - new Date(a.archivedAt || a.date));
+  const buyers = allDbBuyers.filter(b => !b.archived);
+
+  const totalRevenue = quotes.reduce((s, q) => s + q.totalValue, 0);
+  const totalProfit  = quotes.reduce((s, q) => s + q.totalProfit, 0);
+  const totalCost    = quotes.reduce((s, q) => s + q.totalCost, 0);
+  const overallMargin = totalRevenue > 0 ? (totalProfit / totalRevenue) * 100 : 0;
+
+  // Top products by revenue
+  const productMap = {};
+  quotes.forEach(q => {
+    q.items.forEach(item => {
+      const key = item.productName;
+      if (!productMap[key]) productMap[key] = { revenue: 0, qty: 0, profit: 0 };
+      productMap[key].revenue += item.unitPrice * item.qty;
+      productMap[key].qty     += item.qty;
+      productMap[key].profit  += (item.unitPrice - item.finalCost) * item.qty;
+    });
+  });
+  const topProducts = Object.entries(productMap)
+    .map(([name, d]) => ({ name, ...d }))
+    .sort((a, b) => b.revenue - a.revenue)
+    .slice(0, 10);
+
+  // Top countries by revenue
+  const countryMap = {};
+  quotes.forEach(q => {
+    const c = q.country || 'Unknown';
+    if (!countryMap[c]) countryMap[c] = { revenue: 0, quotes: 0 };
+    countryMap[c].revenue += q.totalValue;
+    countryMap[c].quotes  += 1;
+  });
+  const topCountries = Object.entries(countryMap)
+    .map(([name, d]) => ({ name, ...d }))
+    .sort((a, b) => b.revenue - a.revenue)
+    .slice(0, 10);
+
+  // Recent quotes (last 5, newest first)
+  const recentQuotes = [...quotes]
+    .sort((a, b) => new Date(b.date) - new Date(a.date))
+    .slice(0, 5);
+
+  return {
+    totalBuyers:  buyers.length,
+    totalQuotes:  quotes.length,
+    totalRevenue,
+    totalProfit,
+    totalCost,
+    overallMargin,
+    topProducts,
+    topCountries,
+    recentQuotes,
+    allQuotes:    [...quotes].sort((a, b) => new Date(b.date) - new Date(a.date)),
+    allBuyers:    [...buyers].sort((a, b) => b.totalRevenue - a.totalRevenue),
+    archivedQuotes,
+  };
+}
+
+// ── Delete a Quote ────────────────────────────────────────
+export async function deleteQuote(id) {
+  await db_quotes.delete(id);
+}
+
+// ── Update Quote Status ───────────────────────────────────
+export async function updateQuoteStatus(id, status) {
+  const quote = await db_quotes.getById(id);
+  if (quote) {
+    quote.status = status;
+    await db_quotes.put(quote);
+  }
+}
+
+// ── Update Quote Fields ───────────────────────────────────
+export async function updateQuoteFields(id, fields) {
+  const quote = await db_quotes.getById(id);
+  if (quote) {
+    Object.assign(quote, fields);
+    await db_quotes.put(quote);
+  }
+}
+
+// ── Archive / Restore Quote ───────────────────────────────
+export async function archiveQuote(id) {
+  const quote = await db_quotes.getById(id);
+  if (quote) {
+    quote.archived = true;
+    quote.archivedAt = new Date().toISOString();
+    await db_quotes.put(quote);
+  }
+}
+
+export async function restoreQuote(id) {
+  const quote = await db_quotes.getById(id);
+  if (quote) {
+    quote.archived = false;
+    delete quote.archivedAt;
+    await db_quotes.put(quote);
+  }
+}
+
+// ── Duplicate Quote ───────────────────────────────────────
+export async function duplicateQuote(id) {
+  const quote = await db_quotes.getById(id);
+  if (quote) {
+    const newQuote = { ...quote };
+    delete newQuote.id;
+    newQuote.quoteNumber = generateQuoteNumber();
+    newQuote.date = new Date().toISOString();
+    await db_quotes.add(newQuote);
+  }
+}
+
+// ── Buyer Actions ─────────────────────────────────────────
+export async function archiveBuyer(id) {
+  const buyer = await db_buyers.getById(id);
+  if (buyer) {
+    buyer.archived = true;
+    await db_buyers.put(buyer);
+  }
+}
+
+export async function deleteBuyer(id) {
+  await db_buyers.delete(id);
+}
+
+export async function updateBuyerFields(id, fields) {
+  const buyer = await db_buyers.getById(id);
+  if (buyer) {
+    Object.assign(buyer, fields);
+    await db_buyers.put(buyer);
+  }
+}
