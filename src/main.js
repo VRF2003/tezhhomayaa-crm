@@ -2,6 +2,7 @@ import './style.css';
 import { products, getUniqueValues, loadProducts } from './data.js';
 import { openDB, db_quotes, db_buyers, db_settings } from './db.js';
 import { saveQuote, getReport, deleteQuote, updateQuoteFields, archiveQuote, restoreQuote, duplicateQuote, archiveBuyer, deleteBuyer, updateBuyerFields } from './crm.js';
+import { testGoogleSheetsConnection, syncOrderToSheets } from './gsheets.js';
 
 // ── State ──────────────────────────────────────────────────
 let orderItems = [];
@@ -192,6 +193,8 @@ async function loadSettings() {
     document.getElementById('set-opt-images').checked = s.optImages !== false;
     document.getElementById('set-opt-qr').checked = s.optQr !== false;
     document.getElementById('set-opt-watermark').checked = s.optWatermark !== false;
+    if (s.gsheetUrl) document.getElementById('set-gsheet-url').value = s.gsheetUrl;
+    document.getElementById('set-gsheet-autosync').checked = s.gsheetAutoSync !== false;
   } catch (err) {
     console.error("Failed to load settings", err);
   }
@@ -215,6 +218,8 @@ async function saveSettings() {
     s.optImages = document.getElementById('set-opt-images').checked;
     s.optQr = document.getElementById('set-opt-qr').checked;
     s.optWatermark = document.getElementById('set-opt-watermark').checked;
+    s.gsheetUrl = document.getElementById('set-gsheet-url').value;
+    s.gsheetAutoSync = document.getElementById('set-gsheet-autosync').checked;
 
     const logoF = document.getElementById('set-logo').files[0];
     const wmF = document.getElementById('set-watermark').files[0];
@@ -1193,6 +1198,49 @@ function setupEventListeners() {
   const saveSetBtn = document.getElementById('save-settings-btn');
   if (saveSetBtn) {
     saveSetBtn.addEventListener('click', saveSettings);
+  }
+
+  // Google Sheets Test Connection
+  const testGsheetBtn = document.getElementById('test-gsheet-btn');
+  if (testGsheetBtn) {
+    testGsheetBtn.addEventListener('click', async () => {
+      const url = document.getElementById('set-gsheet-url').value;
+      if (!url) return showToast('Please enter a Web App URL first.', true);
+      testGsheetBtn.textContent = 'Testing...';
+      testGsheetBtn.disabled = true;
+      try {
+        await testGoogleSheetsConnection(url);
+        showToast('✓ Connection to Google Sheets successful!');
+      } catch (err) {
+        showToast(`Connection failed: ${err.message}`, true);
+      } finally {
+        testGsheetBtn.textContent = 'Test Connection';
+        testGsheetBtn.disabled = false;
+      }
+    });
+  }
+
+  // Google Sheets Sync Order Button
+  const syncOrderBtn = document.getElementById('order-sync-gsheet-btn');
+  if (syncOrderBtn) {
+    syncOrderBtn.addEventListener('click', async () => {
+      if (!currentOrderDrawerQuote) return;
+      const url = pdfSettings?.gsheetUrl;
+      if (!url) return showToast('Please configure Google Sheets URL in Settings first.', true);
+      
+      const originalText = syncOrderBtn.innerHTML;
+      syncOrderBtn.innerHTML = 'Syncing...';
+      syncOrderBtn.disabled = true;
+      try {
+        await syncOrderToSheets(currentOrderDrawerQuote, url);
+        showToast(`✓ Order ${currentOrderDrawerQuote.quoteNumber} synced to Google Sheets!`);
+      } catch (err) {
+        showToast(`Sync failed: ${err.message}`, true);
+      } finally {
+        syncOrderBtn.innerHTML = originalText;
+        syncOrderBtn.disabled = false;
+      }
+    });
   }
 
   // Navigation: mobile links

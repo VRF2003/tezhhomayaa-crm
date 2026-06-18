@@ -2,7 +2,8 @@
 // crm.js — CRM business logic for Tezhhomayaa Wholesale CRM
 // ============================================================
 
-import { db_quotes, db_buyers } from './db.js';
+import { db_quotes, db_buyers, db_settings } from './db.js';
+import { syncOrderToSheets } from './gsheets.js';
 
 // ── Quote number generator ────────────────────────────────
 function generateQuoteNumber() {
@@ -13,7 +14,7 @@ function generateQuoteNumber() {
 }
 
 // ── Save a Quote + upsert Buyer ──────────────────────────
-export async function saveQuote({ buyerName, company, country, currency, items, totalCost, totalValue, totalProfit, marginPct }) {
+export async function saveQuote({ buyerName, company, country, currency, items, totalCost, totalValue, totalProfit, marginPct, phone, email }) {
   if (!buyerName || items.length === 0) {
     throw new Error('Buyer name and at least one item are required.');
   }
@@ -24,7 +25,7 @@ export async function saveQuote({ buyerName, company, country, currency, items, 
   // 1. Save quote
   const quoteRecord = {
     quoteNumber, date,
-    buyerName, company, country, currency,
+    buyerName, company, country, currency, phone, email,
     items, totalCost, totalValue, totalProfit, marginPct
   };
   const quoteId = await db_quotes.add(quoteRecord);
@@ -35,6 +36,8 @@ export async function saveQuote({ buyerName, company, country, currency, items, 
     const buyer = existingBuyers[0];
     buyer.company     = company || buyer.company;
     buyer.country     = country || buyer.country;
+    buyer.phone       = phone || buyer.phone;
+    buyer.email       = email || buyer.email;
     buyer.lastSeen    = date;
     buyer.totalQuotes += 1;
     buyer.totalRevenue += totalValue;
@@ -42,12 +45,23 @@ export async function saveQuote({ buyerName, company, country, currency, items, 
     await db_buyers.put(buyer);
   } else {
     await db_buyers.add({
-      name: buyerName, company, country,
+      name: buyerName, company, country, phone, email,
       firstSeen: date, lastSeen: date,
       totalQuotes: 1,
       totalRevenue: totalValue,
       totalProfit: totalProfit,
     });
+  }
+
+  // 3. Auto-sync to Google Sheets if enabled
+  try {
+    const s = await db_settings.get();
+    if (s && s.gsheetAutoSync !== false && s.gsheetUrl) {
+      // Fire and forget (or await if we want to block, but fire and forget is safer for UX)
+      syncOrderToSheets(quoteRecord, s.gsheetUrl).catch(e => console.error("Auto-sync to sheets failed", e));
+    }
+  } catch (e) {
+    console.error("Error checking sync settings", e);
   }
 
   return { quoteId, quoteNumber };

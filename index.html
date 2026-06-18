@@ -543,6 +543,10 @@
                   </button>
                   <button class="load-builder-btn" onclick="printSavedQuote(currentOrderDrawerQuote, 'client')">Client PDF</button>
                   <button class="load-builder-btn" onclick="printSavedQuote(currentOrderDrawerQuote, 'internal')">Internal PDF</button>
+                  <button class="load-builder-btn" id="order-sync-gsheet-btn" style="color:var(--accent-green); border-color:var(--accent-green)">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                    Sync to Sheets
+                  </button>
                 </div>
               </div>
               <button id="order-drawer-close" class="icon-btn" aria-label="Close">✕</button>
@@ -645,6 +649,22 @@
               <div class="filter-group" style="flex-direction:row; justify-content:space-between">
                 <label>Show Watermark</label>
                 <input type="checkbox" id="set-opt-watermark" checked>
+              </div>
+            </div>
+
+            <div class="dash-panel settings-panel">
+              <h3 class="dash-panel-title" style="color:var(--accent-green)">Google Sheets Integration</h3>
+              <div class="filter-group">
+                <label>Google Apps Script Web App URL</label>
+                <input type="text" id="set-gsheet-url" placeholder="https://script.google.com/macros/s/.../exec">
+                <small style="color:var(--text-secondary); margin-top:4px">Paste the published Web App URL from your Google Sheet script.</small>
+              </div>
+              <div class="filter-group" style="flex-direction:row; justify-content:space-between; align-items:center; margin-top:1rem">
+                <label>Auto-sync on save</label>
+                <input type="checkbox" id="set-gsheet-autosync" checked>
+              </div>
+              <div class="filter-group" style="margin-top:1rem">
+                <button id="test-gsheet-btn" class="secondary-btn" style="width:100%; padding:10px">Test Connection</button>
               </div>
             </div>
 
