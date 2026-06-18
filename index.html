@@ -289,8 +289,20 @@
                 </select>
               </div>
               <div class="filter-group">
-                <label>5. Quantity</label>
-                <input type="number" id="builder-qty" min="1" value="1" style="width:80px" disabled>
+                <label>5. Size Matrix</label>
+                <div class="size-matrix-container">
+                  <div class="size-matrix">
+                    <div class="size-matrix-col"><label>XS</label><input type="number" id="builder-qty-xs" min="0" value="0" disabled></div>
+                    <div class="size-matrix-col"><label>S</label><input type="number" id="builder-qty-s" min="0" value="0" disabled></div>
+                    <div class="size-matrix-col"><label>M</label><input type="number" id="builder-qty-m" min="0" value="0" disabled></div>
+                    <div class="size-matrix-col"><label>L</label><input type="number" id="builder-qty-l" min="0" value="0" disabled></div>
+                    <div class="size-matrix-col"><label>XL</label><input type="number" id="builder-qty-xl" min="0" value="0" disabled></div>
+                    <div class="size-matrix-col"><label>2XL</label><input type="number" id="builder-qty-2xl" min="0" value="0" disabled></div>
+                  </div>
+                  <label class="same-qty-check">
+                    <input type="checkbox" id="builder-same-qty" disabled> Same Quantity For All Sizes
+                  </label>
+                </div>
               </div>
               <div class="filter-group" style="flex-grow:1; align-items:flex-end">
                 <button id="builder-add-btn" class="primary-btn" disabled>+ Add to Order</button>
@@ -308,9 +320,9 @@
             <table class="data-table">
               <thead><tr>
                 <th>#</th><th>Product</th><th>Design</th><th>Colour</th><th>Tier</th>
-                <th>Cost</th><th>Selling Price</th><th>Qty</th>
-                <th>Line Total</th><th>Profit</th><th>Profit %</th>
-                <th class="actions-col">Actions</th>
+                <th class="internal-col">Cost</th><th>Selling Price</th><th>Size Breakdown</th><th>Total Qty</th>
+                <th>Line Total</th><th class="internal-col">Profit</th><th class="internal-col">Profit %</th>
+                <th class="actions-col internal-col">Actions</th>
               </tr></thead>
               <tbody id="builder-table-body"></tbody>
             </table>
@@ -355,8 +367,20 @@
                   </select>
                 </div>
                 <div class="filter-group">
-                  <label>Quantity</label>
-                  <input type="number" id="edit-qty" min="1" value="1" style="width:90px">
+                  <label>Size Matrix</label>
+                  <div class="size-matrix-container">
+                    <div class="size-matrix">
+                      <div class="size-matrix-col"><label>XS</label><input type="number" id="edit-qty-xs" min="0" value="0"></div>
+                      <div class="size-matrix-col"><label>S</label><input type="number" id="edit-qty-s" min="0" value="0"></div>
+                      <div class="size-matrix-col"><label>M</label><input type="number" id="edit-qty-m" min="0" value="0"></div>
+                      <div class="size-matrix-col"><label>L</label><input type="number" id="edit-qty-l" min="0" value="0"></div>
+                      <div class="size-matrix-col"><label>XL</label><input type="number" id="edit-qty-xl" min="0" value="0"></div>
+                      <div class="size-matrix-col"><label>2XL</label><input type="number" id="edit-qty-2xl" min="0" value="0"></div>
+                    </div>
+                    <label class="same-qty-check">
+                      <input type="checkbox" id="edit-same-qty"> Same Quantity For All Sizes
+                    </label>
+                  </div>
                 </div>
                 <div class="filter-group" style="flex:1">
                   <label>Unit Price (preview)</label>
@@ -409,10 +433,16 @@
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
                 Save Quote to CRM
               </button>
-              <button id="print-quote-btn" class="print-btn" style="width:100%">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
-                Print / Export PDF
-              </button>
+              <div style="display:flex; gap:0.5rem; margin-top:0.5rem">
+                <button id="print-client-btn" class="print-btn" style="flex:1">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+                  Client PDF
+                </button>
+                <button id="print-internal-btn" class="print-btn" style="flex:1">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+                  Internal PDF
+                </button>
+              </div>
               <p id="quote-save-hint" class="save-hint">Add buyer name &amp; at least one item to save.</p>
             </div>
 
@@ -424,16 +454,22 @@
                 </div>
                 <div class="table-container">
                   <table class="data-table">
-                    <thead><tr><th>Product</th><th>Style Code</th><th>Tier</th><th>Qty</th><th>Unit Price</th><th>Total</th></tr></thead>
+                    <thead><tr>
+                      <th>Product</th><th>Style Code</th><th>Tier</th>
+                      <th class="internal-col">Cost</th><th>Unit Price</th>
+                      <th>Size Breakdown</th><th>Total Qty</th>
+                      <th>Line Total</th>
+                      <th class="internal-col">Profit</th><th class="internal-col">Margin %</th>
+                    </tr></thead>
                     <tbody id="quote-table-body"></tbody>
                   </table>
                 </div>
                 <div class="summary-panel" style="flex-direction:column; align-items:flex-end; gap:0.5rem; margin-top:2rem">
                   <div class="summary-row"><span>Items:</span><span id="quote-item-count" style="font-weight:500">0</span></div>
-                  <div class="summary-row"><span>Total Cost:</span><span id="quote-total-cost" class="currency" style="font-weight:500">$0.00</span></div>
+                  <div class="summary-row internal-col"><span>Total Cost:</span><span id="quote-total-cost" class="currency" style="font-weight:500">$0.00</span></div>
                   <div class="summary-row"><span>Total Selling Value:</span><span id="quote-total-selling" class="currency" style="font-weight:500">$0.00</span></div>
-                  <div class="summary-row green-text"><span>Total Profit:</span><span id="quote-total-profit" class="currency" style="font-weight:500">$0.00</span></div>
-                  <div class="summary-row green-text"><span>Overall Margin %:</span><span id="quote-overall-margin" style="font-weight:500">0.00%</span></div>
+                  <div class="summary-row green-text internal-col"><span>Total Profit:</span><span id="quote-total-profit" class="currency" style="font-weight:500">$0.00</span></div>
+                  <div class="summary-row green-text internal-col"><span>Overall Margin %:</span><span id="quote-overall-margin" style="font-weight:500">0.00%</span></div>
                   <div class="summary-row summary-row--total">
                     <span>Grand Total:</span>
                     <span id="quote-grand-total" class="summary-total">$0.00</span>
@@ -507,7 +543,7 @@
             </div>
             <div class="table-container">
               <table class="data-table">
-                <thead><tr><th>Product</th><th>Style Code</th><th>Tier</th><th>Qty</th><th>Unit Price</th><th>Final Cost</th><th>Line Total</th><th>Profit</th></tr></thead>
+                <thead><tr><th>Product</th><th>Style Code</th><th>Tier</th><th class="internal-col">Cost</th><th>Unit Price</th><th>Size Breakdown</th><th>Total Qty</th><th>Line Total</th><th class="internal-col">Profit</th></tr></thead>
                 <tbody id="order-drawer-items"></tbody>
               </table>
             </div>
@@ -519,9 +555,8 @@
           <div class="table-container">
             <table class="data-table">
               <thead><tr>
-                <th>Quote #</th><th>Date</th><th>Buyer</th><th>Company</th>
-                <th>Country</th><th>Status</th><th>Items</th><th>Revenue</th>
-                <th>Archived Date</th><th class="actions-col">Actions</th>
+                <th>Order #</th><th>Date</th><th>Buyer Name</th><th>Company</th><th>Country</th><th>Status</th>
+                <th>Lines</th><th>Total Qty</th><th>Value</th><th class="actions-col">Actions</th>
               </tr></thead>
               <tbody id="archived-table-body"><tr><td colspan="10" class="empty-state">No archived orders.</td></tr></tbody>
             </table>

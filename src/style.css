@@ -300,6 +300,16 @@ select:disabled, input:disabled { opacity: 0.35; cursor: not-allowed; }
 .country-bar-fill { height: 100%; background: var(--accent-gold); border-radius: 99px; transition: width 0.5s ease; }
 .country-bar-val { width: 70px; text-align: right; font-family: monospace; font-size: 0.78rem; color: var(--text-secondary); }
 
+/* ═══ SIZE MATRIX ══════════════════════════════════════════ */
+.size-matrix-container { display: flex; flex-direction: column; gap: 6px; }
+.size-matrix { display: grid; grid-template-columns: repeat(6, 1fr); gap: 4px; }
+.size-matrix-col { display: flex; flex-direction: column; gap: 2px; text-align: center; }
+.size-matrix-col label { font-size: 0.65rem; padding: 0; margin: 0; }
+.size-matrix-col input { width: 100%; min-width: 40px; text-align: center; padding: 6px 4px; }
+.same-qty-check { display: flex; align-items: center; gap: 6px; font-size: 0.72rem; color: var(--text-secondary); margin-top: 4px; cursor: pointer; }
+.same-qty-check input { width: auto; margin: 0; }
+.size-breakdown { font-family: monospace; font-size: 0.75rem; color: var(--text-secondary); line-height: 1.4; white-space: pre-wrap;}
+
 /* ═══ BUYERS ════════════════════════════════════════════════ */
 .buyer-drawer {
   margin-top: var(--spacing-xl);
@@ -595,5 +605,9 @@ select:disabled, input:disabled { opacity: 0.35; cursor: not-allowed; }
   .data-table th, .data-table td { border-color: #ccc !important; color: #000 !important; }
   .data-table th { background: #f5f5f5 !important; }
   .gold-text, .green-text { color: #333 !important; }
+
+  /* Client PDF Hides Internal Columns/Details */
+  body.print-client .internal-col,
+  body.print-client .internal-only { display: none !important; }
 }
 

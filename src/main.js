@@ -45,7 +45,13 @@ const infoSelectedWs = document.getElementById('info-selected-ws');
 const infoProfit     = document.getElementById('info-profit');
 const infoMargin     = document.getElementById('info-margin');
 const builderTier    = document.getElementById('builder-tier');
-const builderQty     = document.getElementById('builder-qty');
+const builderQtyXS   = document.getElementById('builder-qty-xs');
+const builderQtyS    = document.getElementById('builder-qty-s');
+const builderQtyM    = document.getElementById('builder-qty-m');
+const builderQtyL    = document.getElementById('builder-qty-l');
+const builderQtyXL   = document.getElementById('builder-qty-xl');
+const builderQty2XL  = document.getElementById('builder-qty-2xl');
+const builderSameQty = document.getElementById('builder-same-qty');
 const builderAddBtn  = document.getElementById('builder-add-btn');
 const tbodyBuilder   = document.getElementById('builder-table-body');
 const builderTotal   = document.getElementById('builder-total');
@@ -65,7 +71,8 @@ const quoteTotalProfit  = document.getElementById('quote-total-profit');
 const quoteOverallMargin= document.getElementById('quote-overall-margin');
 const quoteGrandTotal   = document.getElementById('quote-grand-total');
 const saveQuoteBtn      = document.getElementById('save-quote-btn');
-const printQuoteBtn     = document.getElementById('print-quote-btn');
+const printClientBtn    = document.getElementById('print-client-btn');
+const printInternalBtn  = document.getElementById('print-internal-btn');
 const quoteSaveHint     = document.getElementById('quote-save-hint');
 
 // ── DOM: CRM Pages ─────────────────────────────────────────
@@ -96,6 +103,23 @@ function statusBadge(status) {
   const s = (status || 'Draft').toLowerCase();
   const cls = `status-badge status-${s}`;
   return `<span class="${cls}">${status || 'Draft'}</span>`;
+}
+
+function calculateTotalQty(sizes) {
+  if (!sizes) return 0;
+  return Object.values(sizes).reduce((sum, val) => sum + (parseInt(val) || 0), 0);
+}
+
+function formatSizeBreakdown(sizes) {
+  if (!sizes) return '—';
+  const parts = [];
+  if (sizes.xs > 0) parts.push(`XS:${sizes.xs}`);
+  if (sizes.s > 0) parts.push(`S:${sizes.s}`);
+  if (sizes.m > 0) parts.push(`M:${sizes.m}`);
+  if (sizes.l > 0) parts.push(`L:${sizes.l}`);
+  if (sizes.xl > 0) parts.push(`XL:${sizes.xl}`);
+  if (sizes.xxl > 0) parts.push(`2XL:${sizes.xxl}`);
+  return parts.length > 0 ? parts.join(', ') : '—';
 }
 
 function showToast(msg, isError = false) {
@@ -200,16 +224,43 @@ function handleAddToOrder() {
   const pColour = builderCatColour?.value;
   const product = products.find(p => p.productName === pName && p.design === pDesign && p.colour === pColour);
   const tier    = builderTier?.value;
-  const qty     = parseInt(builderQty?.value) || 1;
-  if (!product || qty < 1) return;
+  
+  const sizes = {
+    xs: parseInt(builderQtyXS?.value) || 0,
+    s: parseInt(builderQtyS?.value) || 0,
+    m: parseInt(builderQtyM?.value) || 0,
+    l: parseInt(builderQtyL?.value) || 0,
+    xl: parseInt(builderQtyXL?.value) || 0,
+    xxl: parseInt(builderQty2XL?.value) || 0,
+  };
+  const qty = calculateTotalQty(sizes);
+
+  if (!product || qty < 1) {
+    if (qty < 1 && product) showToast('Total quantity must be at least 1.', true);
+    return;
+  }
 
   const existing = orderItems.findIndex(i => i.product.styleCode === product.styleCode && i.tier === tier);
   if (existing > -1) {
-    orderItems[existing].qty += qty;
+    // If item exists, sum the sizes
+    const exSizes = orderItems[existing].sizes || {xs:0, s:0, m:0, l:0, xl:0, xxl:0};
+    orderItems[existing].sizes = {
+      xs: exSizes.xs + sizes.xs,
+      s: exSizes.s + sizes.s,
+      m: exSizes.m + sizes.m,
+      l: exSizes.l + sizes.l,
+      xl: exSizes.xl + sizes.xl,
+      xxl: exSizes.xxl + sizes.xxl
+    };
+    orderItems[existing].qty = calculateTotalQty(orderItems[existing].sizes);
   } else {
-    orderItems.push({ product, tier, qty, unitPrice: product[tier] });
+    orderItems.push({ product, tier, sizes, qty, unitPrice: product[tier] });
   }
-  if (builderQty) builderQty.value = 1;
+  
+  // Reset size inputs
+  [builderQtyXS, builderQtyS, builderQtyM, builderQtyL, builderQtyXL, builderQty2XL].forEach(el => {
+    if (el) el.value = 0;
+  });
   updateOrderViews();
 }
 
@@ -247,13 +298,14 @@ function updateOrderViews() {
         <td style="color:var(--text-secondary)">${item.product.design}</td>
         <td style="color:var(--text-secondary)">${item.product.colour}</td>
         <td>${tierLabel}</td>
-        <td class="currency">${formatCur(lineCost)}</td>
+        <td class="currency internal-col">${formatCur(lineCost)}</td>
         <td class="currency" style="color:var(--accent-gold)">${formatCur(item.unitPrice)}</td>
+        <td class="size-breakdown">${formatSizeBreakdown(item.sizes)}</td>
         <td>${item.qty}</td>
         <td class="currency">${formatCur(lineTotal)}</td>
-        <td class="currency" style="color:var(--accent-green)">${formatCur(profit)}</td>
-        <td style="color:var(--accent-green)">${margin.toFixed(1)}%</td>
-        <td class="actions-col">
+        <td class="currency internal-col" style="color:var(--accent-green)">${formatCur(profit)}</td>
+        <td class="internal-col" style="color:var(--accent-green)">${margin.toFixed(1)}%</td>
+        <td class="actions-col internal-col">
           <div class="action-btn-group">
             <button class="action-btn action-btn--edit"  data-action="edit"  data-idx="${i}" title="Edit">✏️</button>
             <button class="action-btn action-btn--dupe"  data-action="dupe"  data-idx="${i}" title="Duplicate">⧉</button>
@@ -275,13 +327,20 @@ function updateOrderViews() {
 
     tbodyQuote.innerHTML = orderItems.map(item => {
       const lineTotal = item.unitPrice * item.qty;
+      const lineCost = item.product.finalCost * item.qty;
+      const lineProfit = lineTotal - lineCost;
+      const lineMargin = lineTotal > 0 ? (lineProfit / lineTotal) * 100 : 0;
       return `<tr>
         <td>${item.product.productName}</td>
-        <td>${item.product.styleCode}</td>
+        <td style="color:var(--text-secondary)">${item.product.styleCode}</td>
         <td>${item.tier.replace('wholesale','WS ')}</td>
-        <td>${item.qty}</td>
+        <td class="currency internal-col">${formatCur(lineCost)}</td>
         <td class="currency">${formatCur(item.unitPrice)}</td>
+        <td class="size-breakdown">${formatSizeBreakdown(item.sizes)}</td>
+        <td>${item.qty}</td>
         <td class="currency">${formatCur(lineTotal)}</td>
+        <td class="currency internal-col" style="color:var(--accent-green)">${formatCur(lineProfit)}</td>
+        <td class="internal-col" style="color:var(--accent-green)">${lineMargin.toFixed(1)}%</td>
       </tr>`;
     }).join('');
   }
@@ -321,6 +380,7 @@ async function handleSaveQuote() {
     design:      i.product.design,
     colour:      i.product.colour,
     tier:        i.tier,
+    sizes:       i.sizes || {xs:0, s:0, m:0, l:0, xl:0, xxl:0},
     qty:         i.qty,
     unitPrice:   i.unitPrice,
     finalCost:   i.product.finalCost,
@@ -536,11 +596,12 @@ function openOrderDrawer(quote) {
     <td>${item.productName}</td>
     <td>${item.styleCode}</td>
     <td>${item.tier.replace('wholesale','WS ')}</td>
-    <td>${item.qty}</td>
+    <td class="currency internal-col">${formatCur(item.finalCost)}</td>
     <td class="currency">${formatCur(item.unitPrice)}</td>
-    <td class="currency">${formatCur(item.finalCost)}</td>
+    <td class="size-breakdown">${formatSizeBreakdown(item.sizes)}</td>
+    <td>${item.qty}</td>
     <td class="currency">${formatCur(item.unitPrice * item.qty)}</td>
-    <td class="currency" style="color:var(--accent-green)">${formatCur((item.unitPrice - item.finalCost) * item.qty)}</td>
+    <td class="currency internal-col" style="color:var(--accent-green)">${formatCur((item.unitPrice - item.finalCost) * item.qty)}</td>
   </tr>`).join('');
 
   orderDrawer.classList.remove('hidden');
@@ -556,8 +617,9 @@ function loadQuoteIntoBuilder(quote) {
   const mapped = [];
   for (const item of quote.items) {
     const product = products.find(p => p.styleCode === item.styleCode && p.productName === item.productName);
+    const sizes = item.sizes || {xs:0, s:0, m:0, l:0, xl:0, xxl:0};
     if (product) {
-      mapped.push({ product, tier: item.tier, qty: item.qty, unitPrice: item.unitPrice });
+      mapped.push({ product, tier: item.tier, sizes, qty: item.qty, unitPrice: item.unitPrice });
     } else {
       // Fallback: rebuild a minimal product object from saved data
       mapped.push({
@@ -575,6 +637,7 @@ function loadQuoteIntoBuilder(quote) {
           wholesale30: item.unitPrice,
         },
         tier: item.tier,
+        sizes,
         qty: item.qty,
         unitPrice: item.unitPrice,
       });
@@ -721,7 +784,12 @@ function openEditPanel(index) {
   const eDes    = document.getElementById('edit-design');
   const eCol    = document.getElementById('edit-colour');
   const eTier   = document.getElementById('edit-tier');
-  const eQty    = document.getElementById('edit-qty');
+  const eQtyXS  = document.getElementById('edit-qty-xs');
+  const eQtyS   = document.getElementById('edit-qty-s');
+  const eQtyM   = document.getElementById('edit-qty-m');
+  const eQtyL   = document.getElementById('edit-qty-l');
+  const eQtyXL  = document.getElementById('edit-qty-xl');
+  const eQty2XL = document.getElementById('edit-qty-2xl');
   const ePrice  = document.getElementById('edit-unit-price-preview');
 
   const refreshPrice = () => {
@@ -752,7 +820,13 @@ function openEditPanel(index) {
   }
 
   if (eTier) eTier.value = item.tier;
-  if (eQty)  eQty.value  = item.qty;
+  const sizes = item.sizes || {xs:0, s:0, m:0, l:0, xl:0, xxl:0};
+  if (eQtyXS)  eQtyXS.value  = sizes.xs;
+  if (eQtyS)   eQtyS.value   = sizes.s;
+  if (eQtyM)   eQtyM.value   = sizes.m;
+  if (eQtyL)   eQtyL.value   = sizes.l;
+  if (eQtyXL)  eQtyXL.value  = sizes.xl;
+  if (eQty2XL) eQty2XL.value = sizes.xxl;
   refreshPrice();
 
   if (eProd) eProd.onchange = () => {
@@ -781,10 +855,18 @@ function openEditPanel(index) {
 
   document.getElementById('edit-modal-save').onclick = () => {
     const product = products.find(p => p.productName === eProd?.value && p.design === eDes?.value && p.colour === eCol?.value);
-    const qty = parseInt(eQty?.value) || 1;
+    const sizes = {
+      xs: parseInt(eQtyXS?.value) || 0,
+      s: parseInt(eQtyS?.value) || 0,
+      m: parseInt(eQtyM?.value) || 0,
+      l: parseInt(eQtyL?.value) || 0,
+      xl: parseInt(eQtyXL?.value) || 0,
+      xxl: parseInt(eQty2XL?.value) || 0,
+    };
+    const qty = calculateTotalQty(sizes);
     if (!product) { showToast('Select a valid Product → Design → Colour.', true); return; }
     if (qty < 1)  { showToast('Quantity must be at least 1.', true); return; }
-    orderItems[editingIndex] = { product, tier: eTier.value, qty, unitPrice: product[eTier.value] };
+    orderItems[editingIndex] = { product, tier: eTier.value, sizes, qty, unitPrice: product[eTier.value] };
     overlay.classList.add('hidden');
     editingIndex = null;
     updateOrderViews();
@@ -966,7 +1048,23 @@ function setupEventListeners() {
   quoteCompany?.addEventListener('input', updateQuoteDocInfo);
   quoteCountry?.addEventListener('input', updateQuoteDocInfo);
   saveQuoteBtn?.addEventListener('click', handleSaveQuote);
-  printQuoteBtn?.addEventListener('click', () => window.print());
+  
+  if (printClientBtn) {
+    printClientBtn.addEventListener('click', () => {
+      document.body.classList.add('print-client');
+      window.print();
+      setTimeout(() => document.body.classList.remove('print-client'), 500);
+    });
+  }
+  if (printInternalBtn) {
+    printInternalBtn.addEventListener('click', () => {
+      document.body.classList.add('print-internal');
+      window.print();
+      setTimeout(() => document.body.classList.remove('print-internal'), 500);
+    });
+  }
+
+  setupSizeMatrixSync();
 
   // Orders search
   ordersSearch?.addEventListener('input', (e) => renderOrders(e.target.value));
@@ -994,6 +1092,41 @@ function setupEventListeners() {
   });
 }
 
+function setupSizeMatrixSync() {
+  // Order Builder Sync
+  if (builderQtyXS && builderSameQty) {
+    builderQtyXS.addEventListener('input', () => {
+      if (builderSameQty.checked) {
+        const val = builderQtyXS.value;
+        [builderQtyS, builderQtyM, builderQtyL, builderQtyXL, builderQty2XL].forEach(el => el && (el.value = val));
+      }
+    });
+    [builderQtyS, builderQtyM, builderQtyL, builderQtyXL, builderQty2XL].forEach(el => {
+      el?.addEventListener('input', () => builderSameQty.checked = false);
+    });
+  }
+  // Edit Modal Sync
+  const eQtyXS = document.getElementById('edit-qty-xs');
+  const eQtyS = document.getElementById('edit-qty-s');
+  const eQtyM = document.getElementById('edit-qty-m');
+  const eQtyL = document.getElementById('edit-qty-l');
+  const eQtyXL = document.getElementById('edit-qty-xl');
+  const eQty2XL = document.getElementById('edit-qty-2xl');
+  const eSameQty = document.getElementById('edit-same-qty');
+  
+  if (eQtyXS && eSameQty) {
+    eQtyXS.addEventListener('input', () => {
+      if (eSameQty.checked) {
+        const val = eQtyXS.value;
+        [eQtyS, eQtyM, eQtyL, eQtyXL, eQty2XL].forEach(el => el && (el.value = val));
+      }
+    });
+    [eQtyS, eQtyM, eQtyL, eQtyXL, eQty2XL].forEach(el => {
+      el?.addEventListener('input', () => eSameQty.checked = false);
+    });
+  }
+}
+
 // ── Costing Panel Helpers ──────────────────────────────────
 function updateCostingPanel() {
   const pVal = builderCatProduct?.value;
@@ -1017,7 +1150,8 @@ function updateCostingPanel() {
   if (infoProfit) infoProfit.textContent = formatCur(profit);
   if (infoMargin) infoMargin.textContent = margin.toFixed(2) + '%';
   if (builderTier) builderTier.disabled = false;
-  if (builderQty)  builderQty.disabled  = false;
+  [builderQtyXS, builderQtyS, builderQtyM, builderQtyL, builderQtyXL, builderQty2XL, builderSameQty]
+    .forEach(el => { if (el) el.disabled = false; });
   if (builderAddBtn) builderAddBtn.disabled = false;
 }
 
@@ -1025,7 +1159,8 @@ function resetBuilderInfo() {
   [infoStylecode, infoFabric, infoCost, infoFinalcost, infoRetail, infoSelectedWs, infoProfit, infoMargin]
     .forEach(el => { if (el) el.textContent = '—'; });
   if (builderTier)  builderTier.disabled  = true;
-  if (builderQty)   builderQty.disabled   = true;
+  [builderQtyXS, builderQtyS, builderQtyM, builderQtyL, builderQtyXL, builderQty2XL, builderSameQty]
+    .forEach(el => { if (el) el.disabled = true; });
   if (builderAddBtn) builderAddBtn.disabled = true;
 }
 
