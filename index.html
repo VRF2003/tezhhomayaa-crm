@@ -68,6 +68,10 @@
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
             Reports
           </a></li>
+          <li><a class="nav-link" data-target="settings-view">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-2 2 2 2 0 01-2-2v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 01-2-2 2 2 0 012-2h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 010-2.83 2 2 0 012.83 0l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 012-2 2 2 0 012 2v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 012 2 2 2 0 01-2 2h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+            Settings (Admin)
+          </a></li>
         </ul>
 
         <div class="sidebar-footer">
@@ -580,6 +584,74 @@
               <h3 class="dash-panel-title">All-Time Financial Summary</h3>
               <div id="reports-financials" class="reports-fin-grid"></div>
             </div>
+          </div>
+        </section>
+
+        <!-- ══ SETTINGS VIEW (PDF Designer) ═════════════ -->
+        <section id="settings-view" class="view">
+          <div class="settings-grid">
+            
+            <div class="dash-panel settings-panel">
+              <h3 class="dash-panel-title">PDF Themes</h3>
+              <div class="filter-group">
+                <label>Select Luxury Theme</label>
+                <select id="set-theme">
+                  <option value="luxury-beige">Luxury Beige (Default)</option>
+                  <option value="black-gold">Black & Gold</option>
+                  <option value="minimal-white">Minimal White</option>
+                  <option value="fashion-week">Fashion Week Premium</option>
+                  <option value="middle-east">Middle East Luxury</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="dash-panel settings-panel">
+              <h3 class="dash-panel-title">Branding Assets</h3>
+              <div class="filter-group"><label>Company Logo</label><input type="file" id="set-logo" accept="image/*"></div>
+              <div class="filter-group"><label>Watermark Logo</label><input type="file" id="set-watermark" accept="image/*"></div>
+              <div class="filter-group"><label>Signature Image</label><input type="file" id="set-signature" accept="image/*"></div>
+              <div class="filter-group"><label>Company Stamp</label><input type="file" id="set-stamp" accept="image/*"></div>
+            </div>
+
+            <div class="dash-panel settings-panel">
+              <h3 class="dash-panel-title">Company Information</h3>
+              <div class="filter-group"><label>Company Name</label><input type="text" id="set-comp-name" placeholder="Tezhhomayaa"></div>
+              <div class="filter-group"><label>Tagline</label><input type="text" id="set-tagline" placeholder="Bridge To Luxury"></div>
+              <div class="filter-group"><label>Website</label><input type="text" id="set-website" placeholder="www.tezhhomayaa.com"></div>
+              <div class="filter-group"><label>Email</label><input type="text" id="set-email" placeholder="sales@tezhhomayaa.com"></div>
+              <div class="filter-group"><label>Phone</label><input type="text" id="set-phone" placeholder="+60 123 456 789"></div>
+              <div class="filter-group"><label>Address</label><textarea id="set-address" rows="2" placeholder="Malaysia Fashion Show HQ"></textarea></div>
+            </div>
+
+            <div class="dash-panel settings-panel">
+              <h3 class="dash-panel-title">Commercial Terms</h3>
+              <div class="filter-group"><label>MOQ</label><input type="text" id="set-moq" placeholder="100 pieces per style"></div>
+              <div class="filter-group"><label>Payment Terms</label><input type="text" id="set-payment" placeholder="50% Advance, 50% Before Shipment"></div>
+              <div class="filter-group"><label>Delivery Timeline</label><input type="text" id="set-delivery" placeholder="45-60 Days"></div>
+              <div class="filter-group"><label>Shipping Terms</label><input type="text" id="set-shipping" placeholder="FOB Malaysia"></div>
+              <div class="filter-group"><label>Validity Period</label><input type="text" id="set-validity" placeholder="30 Days"></div>
+            </div>
+
+            <div class="dash-panel settings-panel">
+              <h3 class="dash-panel-title">PDF Options</h3>
+              <div class="filter-group" style="flex-direction:row; justify-content:space-between">
+                <label>Show Product Images</label>
+                <input type="checkbox" id="set-opt-images" checked>
+              </div>
+              <div class="filter-group" style="flex-direction:row; justify-content:space-between">
+                <label>Show QR Code</label>
+                <input type="checkbox" id="set-opt-qr" checked>
+              </div>
+              <div class="filter-group" style="flex-direction:row; justify-content:space-between">
+                <label>Show Watermark</label>
+                <input type="checkbox" id="set-opt-watermark" checked>
+              </div>
+            </div>
+
+            <div class="dash-panel settings-panel" style="grid-column: 1 / -1; display:flex; justify-content:flex-end">
+              <button id="save-settings-btn" class="primary-btn" style="min-width:200px; padding:12px; font-size:1.1rem">Save PDF Settings</button>
+            </div>
+
           </div>
         </section>
 

@@ -3,7 +3,7 @@
 // ============================================================
 
 const DB_NAME = 'TezhhomayaaCRM';
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 
 let db = null;
 
@@ -35,6 +35,11 @@ export function openDB() {
         bStore.createIndex('name',    'name',    { unique: false });
         bStore.createIndex('company', 'company', { unique: false });
         bStore.createIndex('country', 'country', { unique: false });
+      }
+
+      // ── settings store ───────────────────────────────────
+      if (!database.objectStoreNames.contains('settings')) {
+        database.createObjectStore('settings', { keyPath: 'id' });
       }
     };
 
@@ -98,4 +103,9 @@ export const db_buyers = {
   getById:(id) => getById('buyers', id),
   getByName: (name) => getByIndex('buyers', 'name', name),
   delete: (id) => promisify(tx('buyers', 'readwrite').delete(id)),
+};
+
+export const db_settings = {
+  get: () => getById('settings', 'pdf_settings'),
+  put: (settings) => put('settings', { id: 'pdf_settings', ...settings }),
 };

@@ -1,6 +1,6 @@
 import './style.css';
 import { products, getUniqueValues, loadProducts } from './data.js';
-import { openDB, db_quotes, db_buyers } from './db.js';
+import { openDB, db_quotes, db_buyers, db_settings } from './db.js';
 import { saveQuote, getReport, deleteQuote, updateQuoteFields, archiveQuote, restoreQuote, duplicateQuote, archiveBuyer, deleteBuyer, updateBuyerFields } from './crm.js';
 
 // ── State ──────────────────────────────────────────────────
@@ -8,6 +8,7 @@ let orderItems = [];
 let filters = { search: '', category: '', design: '', colour: '', styleCode: '' };
 let currentCurrency = 'USD';
 let currentOrderDrawerQuote = null; // track open drawer quote for "Load into Builder"
+let pdfSettings = {}; // track global PDF Settings
 
 const exchangeRates = {
   USD: { symbol: '$',    rate: 1 },
@@ -164,9 +165,79 @@ function activateView(targetId) {
   if (targetId === 'reports-view')   renderReports();
 }
 
+// ── Settings Controller ────────────────────────────────────
+const fileToBase64 = file => new Promise((resolve, reject) => {
+  const reader = new FileReader();
+  reader.readAsDataURL(file);
+  reader.onload = () => resolve(reader.result);
+  reader.onerror = error => reject(error);
+});
+
+async function loadSettings() {
+  try {
+    const s = await db_settings.get() || {};
+    pdfSettings = s;
+    if (s.theme) document.getElementById('set-theme').value = s.theme;
+    if (s.compName) document.getElementById('set-comp-name').value = s.compName;
+    if (s.tagline) document.getElementById('set-tagline').value = s.tagline;
+    if (s.website) document.getElementById('set-website').value = s.website;
+    if (s.email) document.getElementById('set-email').value = s.email;
+    if (s.phone) document.getElementById('set-phone').value = s.phone;
+    if (s.address) document.getElementById('set-address').value = s.address;
+    if (s.moq) document.getElementById('set-moq').value = s.moq;
+    if (s.payment) document.getElementById('set-payment').value = s.payment;
+    if (s.delivery) document.getElementById('set-delivery').value = s.delivery;
+    if (s.shipping) document.getElementById('set-shipping').value = s.shipping;
+    if (s.validity) document.getElementById('set-validity').value = s.validity;
+    document.getElementById('set-opt-images').checked = s.optImages !== false;
+    document.getElementById('set-opt-qr').checked = s.optQr !== false;
+    document.getElementById('set-opt-watermark').checked = s.optWatermark !== false;
+  } catch (err) {
+    console.error("Failed to load settings", err);
+  }
+}
+
+async function saveSettings() {
+  try {
+    const s = { ...pdfSettings };
+    s.theme = document.getElementById('set-theme').value;
+    s.compName = document.getElementById('set-comp-name').value;
+    s.tagline = document.getElementById('set-tagline').value;
+    s.website = document.getElementById('set-website').value;
+    s.email = document.getElementById('set-email').value;
+    s.phone = document.getElementById('set-phone').value;
+    s.address = document.getElementById('set-address').value;
+    s.moq = document.getElementById('set-moq').value;
+    s.payment = document.getElementById('set-payment').value;
+    s.delivery = document.getElementById('set-delivery').value;
+    s.shipping = document.getElementById('set-shipping').value;
+    s.validity = document.getElementById('set-validity').value;
+    s.optImages = document.getElementById('set-opt-images').checked;
+    s.optQr = document.getElementById('set-opt-qr').checked;
+    s.optWatermark = document.getElementById('set-opt-watermark').checked;
+
+    const logoF = document.getElementById('set-logo').files[0];
+    const wmF = document.getElementById('set-watermark').files[0];
+    const sigF = document.getElementById('set-signature').files[0];
+    const stampF = document.getElementById('set-stamp').files[0];
+
+    if (logoF) s.logoUrl = await fileToBase64(logoF);
+    if (wmF) s.watermarkUrl = await fileToBase64(wmF);
+    if (sigF) s.signatureUrl = await fileToBase64(sigF);
+    if (stampF) s.stampUrl = await fileToBase64(stampF);
+
+    await db_settings.put(s);
+    pdfSettings = s;
+    showToast('✓ PDF Settings saved successfully.');
+  } catch (err) {
+    showToast(`Error: ${err.message}`, true);
+  }
+}
+
 // ── Init ───────────────────────────────────────────────────
 async function init() {
   await openDB();
+  await loadSettings();
   await loadProducts();
   populateDropdowns();
   setupEventListeners();
@@ -617,67 +688,152 @@ window.printSavedQuote = function(quote, mode) {
     document.body.appendChild(pc);
   }
 
-  const tbody = quote.items.map(item => `
-    <tr>
-      <td>${item.productName}</td>
-      <td style="color:var(--text-secondary)">${item.styleCode}</td>
-      <td style="color:var(--text-secondary)">${item.design || '—'}</td>
-      <td style="color:var(--text-secondary)">${item.colour || '—'}</td>
-      <td class="size-breakdown">${formatSizeBreakdown(item.sizes)}</td>
-      <td>${item.qty}</td>
-      <td class="currency">${formatCur(item.unitPrice)}</td>
-      <td class="currency">${formatCur(item.unitPrice * item.qty)}</td>
-      <td class="currency internal-col">${formatCur(item.finalCost)}</td>
-      <td class="currency internal-col" style="color:var(--accent-green)">${formatCur((item.unitPrice - item.finalCost) * item.qty)}</td>
-      <td class="internal-col" style="color:var(--accent-green)">${(item.unitPrice > 0 ? ((item.unitPrice - item.finalCost)/item.unitPrice)*100 : 0).toFixed(1)}%</td>
-    </tr>
-  `).join('');
+  const s = pdfSettings || {};
+  const isClient = mode === 'client';
+  const themeClass = `theme-${s.theme || 'luxury-beige'}`;
+  const showImg = s.optImages !== false;
+
+  const tbody = quote.items.map(item => {
+    const sizeStr = Object.entries(item.sizes || {})
+      .filter(([_, v]) => v > 0)
+      .map(([k, v]) => `${k.toUpperCase()}: ${v}`)
+      .join('<br>');
+      
+    const profit = (item.unitPrice - item.finalCost) * item.qty;
+    const margin = item.unitPrice > 0 ? ((item.unitPrice - item.finalCost)/item.unitPrice)*100 : 0;
+
+    return `
+      <tr>
+        ${showImg ? `<td style="width:50px"><div class="pdf-prod-img"></div></td>` : ''}
+        <td><strong>${item.productName}</strong></td>
+        <td>${item.design || '—'}</td>
+        <td>${item.colour || '—'}</td>
+        ${!isClient ? `<td>${item.styleCode}</td>` : ''}
+        <td style="font-size:0.8rem; line-height:1.2">${sizeStr}</td>
+        <td style="text-align:center">${item.qty}</td>
+        ${!isClient ? `<td class="currency">${formatCur(item.finalCost)}</td>` : ''}
+        <td class="currency">${formatCur(item.unitPrice)}</td>
+        <td class="currency">${formatCur(item.unitPrice * item.qty)}</td>
+        ${!isClient ? `<td class="currency" style="color:var(--pdf-accent)">${formatCur(profit)}</td>` : ''}
+        ${!isClient ? `<td style="color:var(--pdf-accent)">${margin.toFixed(1)}%</td>` : ''}
+      </tr>
+    `;
+  }).join('');
 
   pc.innerHTML = `
-    <div class="quote-document" style="box-shadow:none; padding:0;">
-      <div class="quote-doc-header">
-        <h2 class="gold-text">Formal Quotation</h2>
-        <div style="display:flex; justify-content:space-between; margin-top:1rem;">
-          <div>
-            <strong>${quote.buyerName}</strong><br>
-            ${quote.company ? quote.company + '<br>' : ''}
-            ${quote.country ? quote.country : ''}
-          </div>
-          <div style="text-align:right;">
-            <strong>Quote #:</strong> ${quote.quoteNumber}<br>
-            <strong>Date:</strong> ${formatDate(quote.date)}
+    <div class="pdf-doc">
+      <!-- HEADER -->
+      <div class="pdf-header">
+        <div>
+          ${s.logoUrl ? `<img src="${s.logoUrl}" class="pdf-logo">` : `<h2 style="margin:0;color:var(--pdf-accent)">${s.compName || 'TEZHHOMAYAA'}</h2>`}
+          <div style="font-size:0.85rem; margin-top:5px; color:var(--pdf-text-muted)">${s.tagline || 'Bridge To Luxury'}</div>
+        </div>
+        <div class="pdf-title-block">
+          <h1>${isClient ? 'Formal Quotation' : 'Internal Commercial Report'}</h1>
+          <div style="margin-top:10px; font-size:0.9rem">
+            <div><strong>Quote #:</strong> ${quote.quoteNumber}</div>
+            <div><strong>Date:</strong> ${formatDate(quote.date)}</div>
+            ${isClient ? `<div><strong>Valid Until:</strong> ${s.validity || '30 Days'}</div>` : ''}
           </div>
         </div>
       </div>
-      <div class="table-container">
-        <table class="data-table">
-          <thead>
-            <tr>
-              <th>Product</th><th>Style Code</th><th>Design</th><th>Colour</th>
-              <th>Size Matrix</th><th>Qty</th><th>Unit Price</th><th>Line Total</th>
-              <th class="internal-col">Unit Cost</th><th class="internal-col">Profit</th><th class="internal-col">Margin %</th>
-            </tr>
-          </thead>
-          <tbody>${tbody}</tbody>
-        </table>
+
+      <!-- BUYER SECTION -->
+      <div class="pdf-buyer-grid">
+        <div>
+          <h4 style="margin:0 0 10px 0; color:var(--pdf-accent); text-transform:uppercase; font-size:0.8rem">Prepared For</h4>
+          <div style="font-size:1.1rem; font-weight:600">${quote.buyerName}</div>
+          <div>${quote.company || ''}</div>
+          <div>${quote.country || ''}</div>
+        </div>
+        ${!isClient ? `
+        <div>
+          <h4 style="margin:0 0 10px 0; color:var(--pdf-accent); text-transform:uppercase; font-size:0.8rem">Internal Status</h4>
+          <div><strong>Sales Rep:</strong> Admin</div>
+          <div><strong>Approval:</strong> ${quote.status || 'Draft'}</div>
+        </div>
+        ` : ''}
       </div>
-      <div class="summary-panel" style="flex-direction:column; align-items:flex-end; gap:0.5rem; margin-top:2rem">
-        <div class="summary-row"><span>Total Qty:</span><span style="font-weight:500">${quote.items.reduce((s,i)=>s+i.qty,0)}</span></div>
-        <div class="summary-row"><span>Grand Total:</span><span class="summary-total">${formatCur(quote.totalValue)}</span></div>
-        <div class="summary-row internal-col"><span>Total Cost:</span><span class="currency">${formatCur(quote.totalCost)}</span></div>
-        <div class="summary-row green-text internal-col"><span>Total Profit:</span><span class="currency">${formatCur(quote.totalProfit)}</span></div>
+
+      <!-- PRODUCT TABLE -->
+      <table class="pdf-table">
+        <thead>
+          <tr>
+            ${showImg ? '<th>Image</th>' : ''}
+            <th>Product</th>
+            <th>Design</th>
+            <th>Colour</th>
+            ${!isClient ? '<th>Style Code</th>' : ''}
+            <th>Size Matrix</th>
+            <th style="text-align:center">Qty</th>
+            ${!isClient ? '<th>Unit Cost</th>' : ''}
+            <th>Unit Price</th>
+            <th>Line Total</th>
+            ${!isClient ? '<th>Profit</th>' : ''}
+            ${!isClient ? '<th>Margin %</th>' : ''}
+          </tr>
+        </thead>
+        <tbody>${tbody}</tbody>
+      </table>
+
+      <!-- SUMMARY -->
+      <div class="pdf-summary">
+        <div style="display:flex; justify-content:space-between; width:300px">
+          <span>Total Quantity:</span>
+          <span style="font-weight:600">${quote.items.reduce((sum,i)=>sum+i.qty,0)}</span>
+        </div>
+        ${!isClient ? `
+        <div style="display:flex; justify-content:space-between; width:300px; margin-top:10px">
+          <span>Total Cost:</span>
+          <span style="font-weight:600" class="currency">${formatCur(quote.totalCost)}</span>
+        </div>
+        ` : ''}
+        <div style="display:flex; justify-content:space-between; width:300px; margin-top:10px; font-size:1.3rem; color:var(--pdf-accent)">
+          <span>Grand Total:</span>
+          <span style="font-weight:700" class="currency">${formatCur(quote.totalValue)}</span>
+        </div>
+        ${!isClient ? `
+        <div style="display:flex; justify-content:space-between; width:300px; margin-top:10px; color:var(--pdf-accent)">
+          <span>Total Profit:</span>
+          <span style="font-weight:600" class="currency">${formatCur(quote.totalProfit)}</span>
+        </div>
+        ` : ''}
+      </div>
+
+      <!-- FOOTER -->
+      <div class="pdf-footer">
+        ${isClient ? `
+        <div>
+          <h4 style="margin:0 0 10px 0; color:var(--pdf-accent); text-transform:uppercase; font-size:0.8rem">Commercial Terms</h4>
+          <div style="margin-bottom:4px"><strong>MOQ:</strong> ${s.moq || '100 pieces per style'}</div>
+          <div style="margin-bottom:4px"><strong>Payment:</strong> ${s.payment || '50% Advance, 50% Before Shipment'}</div>
+          <div style="margin-bottom:4px"><strong>Delivery:</strong> ${s.delivery || '45-60 Days'}</div>
+          <div style="margin-bottom:4px"><strong>Shipping:</strong> ${s.shipping || 'FOB'}</div>
+        </div>
+        ` : `
+        <div>
+          <h4 style="margin:0 0 10px 0; color:var(--pdf-accent); text-transform:uppercase; font-size:0.8rem">Internal Notes</h4>
+          <div>This is an internal commercial document. Not for distribution.</div>
+        </div>
+        `}
+        <div style="text-align:right">
+          <div style="font-weight:600; margin-bottom:10px; color:var(--pdf-text)">${s.compName || 'Tezhhomayaa'}</div>
+          ${s.website ? `<div>${s.website}</div>` : ''}
+          ${s.email ? `<div>${s.email}</div>` : ''}
+          ${s.phone ? `<div>${s.phone}</div>` : ''}
+          ${s.address ? `<div style="margin-top:10px; white-space:pre-line">${s.address}</div>` : ''}
+          <div style="margin-top:20px; font-weight:600; font-style:italic">Thank you for choosing ${s.compName || 'Tezhhomayaa'}</div>
+        </div>
       </div>
     </div>
   `;
 
-  document.body.classList.add('print-mode-direct');
-  if (mode === 'client') document.body.classList.add('print-client');
-  if (mode === 'internal') document.body.classList.add('print-internal');
+  document.body.className = `print-mode-direct ${themeClass} ${isClient ? 'print-client' : 'print-internal'}`;
 
   window.print();
 
   setTimeout(() => {
-    document.body.classList.remove('print-mode-direct', 'print-client', 'print-internal');
+    document.body.className = '';
   }, 500);
 };
 
@@ -1032,6 +1188,12 @@ function setupEventListeners() {
       activateView(e.currentTarget.getAttribute('data-target'));
     });
   });
+
+  // Settings Save Button
+  const saveSetBtn = document.getElementById('save-settings-btn');
+  if (saveSetBtn) {
+    saveSetBtn.addEventListener('click', saveSettings);
+  }
 
   // Navigation: mobile links
   document.querySelectorAll('.mobile-nav-link').forEach(link => {
