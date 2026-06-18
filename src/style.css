@@ -597,6 +597,8 @@ select:disabled, input:disabled { opacity: 0.35; cursor: not-allowed; }
   .modal-overlay, nav { display: none !important; }
   .app-container { display: block !important; }
   .main-content { padding: 0 !important; }
+  body.print-mode-direct .app-container { display: none !important; }
+  body.print-mode-direct #print-container { display: block !important; }
   .view { display: block !important; }
   section.view:not(#quote-view) { display: none !important; }
   #quote-view { display: block !important; }
@@ -611,3 +613,4 @@ select:disabled, input:disabled { opacity: 0.35; cursor: not-allowed; }
   body.print-client .internal-only { display: none !important; }
 }
 
+#print-container { display: none; }

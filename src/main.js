@@ -491,7 +491,7 @@ async function renderBuyers() {
         <td class="currency" style="color:var(--accent-green)">${formatCur(b.totalProfit)}</td>
         <td>${formatDate(b.firstSeen)}</td>
         <td>${formatDate(b.lastSeen)}</td>
-        <td class="actions-col" onclick="event.stopPropagation()">
+        <td class="actions-col">
           <div class="action-btn-group">
             <button class="action-btn action-btn--edit" data-action="edit-buyer" data-id="${b.id}" title="Edit Buyer">✏️</button>
             <button class="action-btn action-btn--delete" data-action="delete-buyer" data-id="${b.id}" title="Delete/Archive Buyer">🗑</button>
@@ -607,6 +607,79 @@ function openOrderDrawer(quote) {
   orderDrawer.classList.remove('hidden');
   orderDrawer.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
+
+// ── Print Saved Quote Directly ────────────────────────────────
+window.printSavedQuote = function(quote, mode) {
+  let pc = document.getElementById('print-container');
+  if (!pc) {
+    pc = document.createElement('div');
+    pc.id = 'print-container';
+    document.body.appendChild(pc);
+  }
+
+  const tbody = quote.items.map(item => `
+    <tr>
+      <td>${item.productName}</td>
+      <td style="color:var(--text-secondary)">${item.styleCode}</td>
+      <td style="color:var(--text-secondary)">${item.design || '—'}</td>
+      <td style="color:var(--text-secondary)">${item.colour || '—'}</td>
+      <td class="size-breakdown">${formatSizeBreakdown(item.sizes)}</td>
+      <td>${item.qty}</td>
+      <td class="currency">${formatCur(item.unitPrice)}</td>
+      <td class="currency">${formatCur(item.unitPrice * item.qty)}</td>
+      <td class="currency internal-col">${formatCur(item.finalCost)}</td>
+      <td class="currency internal-col" style="color:var(--accent-green)">${formatCur((item.unitPrice - item.finalCost) * item.qty)}</td>
+      <td class="internal-col" style="color:var(--accent-green)">${(item.unitPrice > 0 ? ((item.unitPrice - item.finalCost)/item.unitPrice)*100 : 0).toFixed(1)}%</td>
+    </tr>
+  `).join('');
+
+  pc.innerHTML = `
+    <div class="quote-document" style="box-shadow:none; padding:0;">
+      <div class="quote-doc-header">
+        <h2 class="gold-text">Formal Quotation</h2>
+        <div style="display:flex; justify-content:space-between; margin-top:1rem;">
+          <div>
+            <strong>${quote.buyerName}</strong><br>
+            ${quote.company ? quote.company + '<br>' : ''}
+            ${quote.country ? quote.country : ''}
+          </div>
+          <div style="text-align:right;">
+            <strong>Quote #:</strong> ${quote.quoteNumber}<br>
+            <strong>Date:</strong> ${formatDate(quote.date)}
+          </div>
+        </div>
+      </div>
+      <div class="table-container">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Product</th><th>Style Code</th><th>Design</th><th>Colour</th>
+              <th>Size Matrix</th><th>Qty</th><th>Unit Price</th><th>Line Total</th>
+              <th class="internal-col">Unit Cost</th><th class="internal-col">Profit</th><th class="internal-col">Margin %</th>
+            </tr>
+          </thead>
+          <tbody>${tbody}</tbody>
+        </table>
+      </div>
+      <div class="summary-panel" style="flex-direction:column; align-items:flex-end; gap:0.5rem; margin-top:2rem">
+        <div class="summary-row"><span>Total Qty:</span><span style="font-weight:500">${quote.items.reduce((s,i)=>s+i.qty,0)}</span></div>
+        <div class="summary-row"><span>Grand Total:</span><span class="summary-total">${formatCur(quote.totalValue)}</span></div>
+        <div class="summary-row internal-col"><span>Total Cost:</span><span class="currency">${formatCur(quote.totalCost)}</span></div>
+        <div class="summary-row green-text internal-col"><span>Total Profit:</span><span class="currency">${formatCur(quote.totalProfit)}</span></div>
+      </div>
+    </div>
+  `;
+
+  document.body.classList.add('print-mode-direct');
+  if (mode === 'client') document.body.classList.add('print-client');
+  if (mode === 'internal') document.body.classList.add('print-internal');
+
+  window.print();
+
+  setTimeout(() => {
+    document.body.classList.remove('print-mode-direct', 'print-client', 'print-internal');
+  }, 500);
+};
 
 // ── Load Into Builder from Order Drawer ─────────────────────
 function loadQuoteIntoBuilder(quote) {
