@@ -1,6 +1,6 @@
 import './style.css';
 import { products, getUniqueValues, loadProducts } from './data.js';
-import { openDB, db_quotes, db_buyers, db_settings } from './db.js';
+import { openDB, db_quotes, db_buyers, db_settings, executeMigrations, exportDatabase, importDatabase } from './db.js';
 import { saveQuote, getReport, deleteQuote, updateQuoteFields, archiveQuote, restoreQuote, duplicateQuote, archiveBuyer, deleteBuyer, updateBuyerFields } from './crm.js';
 import { testGoogleSheetsConnection, syncOrderToSheets } from './gsheets.js';
 
@@ -246,6 +246,7 @@ async function saveSettings() {
 // ── Init ───────────────────────────────────────────────────
 async function init() {
   await openDB();
+  await executeMigrations();
   await loadSettings();
   await loadProducts();
   populateDropdowns();
@@ -1444,6 +1445,85 @@ function setupEventListeners() {
     if (activeView === 'orders-view')    renderOrders(ordersSearch?.value || '');
     if (activeView === 'reports-view')   renderReports();
   });
+
+  // Database Migration Event
+  window.addEventListener('db-migrated', (e) => {
+    showToast(`✓ Database migration to v\${e.detail.version} successful!`);
+  });
+
+  // Database Backup / Restore
+  const exportDbBtn = document.getElementById('export-db-btn');
+  const importDbTrigger = document.getElementById('import-db-trigger');
+  const importDbFile = document.getElementById('import-db-file');
+  const importConfirmModal = document.getElementById('import-confirm-modal');
+  let pendingImportData = null;
+
+  if (exportDbBtn) {
+    exportDbBtn.addEventListener('click', async () => {
+      try {
+        await exportDatabase();
+        showToast('✓ Backup exported successfully.');
+      } catch (err) {
+        showToast(`Export failed: \${err.message}`, true);
+      }
+    });
+  }
+
+  if (importDbTrigger && importDbFile) {
+    importDbTrigger.addEventListener('click', () => importDbFile.click());
+    importDbFile.addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        pendingImportData = ev.target.result;
+        importConfirmModal?.classList.remove('hidden');
+        importDbFile.value = ''; // Reset
+      };
+      reader.readAsText(file);
+    });
+  }
+
+  if (importConfirmModal) {
+    document.getElementById('ic-cancel')?.addEventListener('click', () => {
+      pendingImportData = null;
+      importConfirmModal.classList.add('hidden');
+    });
+    document.getElementById('ic-close')?.addEventListener('click', () => {
+      pendingImportData = null;
+      importConfirmModal.classList.add('hidden');
+    });
+    importConfirmModal.addEventListener('click', (e) => {
+      if (e.target === importConfirmModal) {
+        pendingImportData = null;
+        importConfirmModal.classList.add('hidden');
+      }
+    });
+    
+    document.getElementById('ic-confirm')?.addEventListener('click', async () => {
+      if (!pendingImportData) return;
+      const btn = document.getElementById('ic-confirm');
+      const originalText = btn.textContent;
+      btn.textContent = 'Importing...';
+      btn.disabled = true;
+      try {
+        await importDatabase(pendingImportData);
+        importConfirmModal.classList.add('hidden');
+        showToast('✓ Backup restored successfully.');
+        // Refresh UI
+        renderDashboard();
+        renderBuyers();
+        renderOrders('');
+      } catch (err) {
+        showToast(`Import failed: \${err.message}`, true);
+      } finally {
+        btn.textContent = originalText;
+        btn.disabled = false;
+        pendingImportData = null;
+      }
+    });
+  }
 }
 
 function setupSizeMatrixSync() {

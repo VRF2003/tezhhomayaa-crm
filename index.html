@@ -689,6 +689,16 @@
               </div>
             </div>
 
+            <div class="dash-panel settings-panel">
+              <h3 class="dash-panel-title" style="color:var(--accent-gold)">Database Management</h3>
+              <p style="font-size:0.85rem; color:var(--text-secondary); margin-bottom:1rem">Backup your CRM data locally or restore from a previous backup. The backup includes all quotes, buyers, and settings.</p>
+              <div style="display:flex; flex-direction:column; gap:10px">
+                <button id="export-db-btn" class="secondary-btn" style="width:100%; padding:10px">Export CRM Backup (JSON)</button>
+                <button id="import-db-trigger" class="secondary-btn" style="width:100%; padding:10px; color:var(--accent-gold); border-color:var(--accent-gold)">Import CRM Backup (JSON)</button>
+                <input type="file" id="import-db-file" accept=".json" style="display:none">
+              </div>
+            </div>
+
             <div class="dash-panel settings-panel" style="grid-column: 1 / -1; display:flex; justify-content:flex-end">
               <button id="save-settings-btn" class="primary-btn" style="min-width:200px; padding:12px; font-size:1.1rem">Save PDF Settings</button>
             </div>
@@ -790,6 +800,25 @@
           <button id="bd-cancel" class="secondary-btn">Cancel</button>
           <button id="bd-archive" class="primary-btn">Archive</button>
           <button id="bd-delete" class="primary-btn" style="background:#e04040">Permanently Delete</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ IMPORT CONFIRM MODAL ══════════════════════════ -->
+    <div id="import-confirm-modal" class="modal-overlay hidden" role="dialog" aria-modal="true">
+      <div class="modal-box modal-box--sm">
+        <div class="modal-header">
+          <h3 style="color:#e04040">Warning: Overwrite Data</h3>
+          <button id="ic-close" class="icon-btn" aria-label="Close">✕</button>
+        </div>
+        <div class="modal-body">
+          <p style="color:var(--text-secondary); font-size:0.95rem; line-height:1.5">
+            You are about to import a backup file. <strong>This will completely overwrite your existing CRM data</strong>, including all quotes and buyers. Are you sure you want to proceed?
+          </p>
+        </div>
+        <div class="modal-footer">
+          <button id="ic-cancel" class="secondary-btn">Cancel</button>
+          <button id="ic-confirm" class="primary-btn" style="background:#e04040; border-color:#e04040">Proceed & Overwrite</button>
         </div>
       </div>
     </div>
