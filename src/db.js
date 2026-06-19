@@ -6,11 +6,12 @@ const DB_NAME = 'TezhhomayaaCRM';
 const DB_VERSION = 2;
 
 let db = null;
+let dbPromise = null;
 
 export function openDB() {
-  return new Promise((resolve, reject) => {
-    if (db) return resolve(db);
+  if (dbPromise) return dbPromise;
 
+  dbPromise = new Promise((resolve, reject) => {
     const req = indexedDB.open(DB_NAME, DB_VERSION);
 
     req.onupgradeneeded = (e) => {
@@ -45,17 +46,45 @@ export function openDB() {
 
     req.onsuccess = (e) => {
       db = e.target.result;
+      
+      db.onclose = () => {
+        db = null;
+        dbPromise = null;
+      };
+      
+      db.onversionchange = () => {
+        db.close();
+        db = null;
+        dbPromise = null;
+      };
+      
       resolve(db);
     };
 
-    req.onerror = () => reject(req.error);
+    req.onerror = () => {
+      dbPromise = null;
+      reject(req.error);
+    };
   });
+
+  return dbPromise;
 }
 
 // ── Generic helpers ─────────────────────────────────────────
 
-function tx(storeName, mode = 'readonly') {
-  return db.transaction(storeName, mode).objectStore(storeName);
+async function tx(storeName, mode = 'readonly') {
+  if (!db) await openDB();
+  try {
+    return db.transaction(storeName, mode).objectStore(storeName);
+  } catch (err) {
+    if (err.name === 'InvalidStateError' && err.message.includes('closing')) {
+      db = null;
+      dbPromise = null;
+      await openDB();
+      return db.transaction(storeName, mode).objectStore(storeName);
+    }
+    throw err;
+  }
 }
 
 function promisify(req) {
@@ -65,24 +94,29 @@ function promisify(req) {
   });
 }
 
-function getAll(storeName) {
-  return promisify(tx(storeName).getAll());
+async function getAll(storeName) {
+  const store = await tx(storeName);
+  return promisify(store.getAll());
 }
 
-function getById(storeName, id) {
-  return promisify(tx(storeName).get(id));
+async function getById(storeName, id) {
+  const store = await tx(storeName);
+  return promisify(store.get(id));
 }
 
-function add(storeName, record) {
-  return promisify(tx(storeName, 'readwrite').add(record));
+async function add(storeName, record) {
+  const store = await tx(storeName, 'readwrite');
+  return promisify(store.add(record));
 }
 
-function put(storeName, record) {
-  return promisify(tx(storeName, 'readwrite').put(record));
+async function put(storeName, record) {
+  const store = await tx(storeName, 'readwrite');
+  return promisify(store.put(record));
 }
 
-function getByIndex(storeName, indexName, value) {
-  return promisify(tx(storeName).index(indexName).getAll(value));
+async function getByIndex(storeName, indexName, value) {
+  const store = await tx(storeName);
+  return promisify(store.index(indexName).getAll(value));
 }
 
 // ── Public API ───────────────────────────────────────────────
@@ -92,7 +126,10 @@ export const db_quotes = {
   getAll: ()   => getAll('quotes'),
   getById:(id) => getById('quotes', id),
   getByBuyer: (name) => getByIndex('quotes', 'buyerName', name),
-  delete: (id) => promisify(tx('quotes', 'readwrite').delete(id)),
+  delete: async (id) => {
+    const store = await tx('quotes', 'readwrite');
+    return promisify(store.delete(id));
+  },
   put:    (q)  => put('quotes', q),
 };
 
@@ -102,7 +139,10 @@ export const db_buyers = {
   getAll: ()  => getAll('buyers'),
   getById:(id) => getById('buyers', id),
   getByName: (name) => getByIndex('buyers', 'name', name),
-  delete: (id) => promisify(tx('buyers', 'readwrite').delete(id)),
+  delete: async (id) => {
+    const store = await tx('buyers', 'readwrite');
+    return promisify(store.delete(id));
+  },
 };
 
 export const db_settings = {

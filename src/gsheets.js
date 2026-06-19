@@ -44,7 +44,9 @@ export async function syncOrderToSheets(quote, url) {
       company: quote.company || '',
       country: quote.country || '',
       phone: quote.phone || '',
-      email: quote.email || ''
+      email: quote.email || '',
+      whatsapp: quote.whatsapp || '',
+      buyerType: quote.buyerType || ''
     },
     order: {
       orderNumber: quote.quoteNumber,

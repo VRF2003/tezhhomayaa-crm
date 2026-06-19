@@ -420,9 +420,24 @@
           <div class="quote-grid">
             <div class="quote-buyer-info">
               <h3 style="margin-bottom:1rem">Buyer Details</h3>
-              <div class="filter-group"><label>Buyer Name</label><input type="text" id="quote-name" placeholder="John Doe"></div>
-              <div class="filter-group"><label>Company</label><input type="text" id="quote-company" placeholder="Aurelia Boutiques"></div>
-              <div class="filter-group"><label>Country</label><input type="text" id="quote-country" placeholder="Malaysia"></div>
+              <div class="filter-group"><label>Buyer Name <span style="color:#e04040">*</span></label><input type="text" id="quote-name" placeholder="John Doe"></div>
+              <div class="filter-group"><label>Company <span style="color:#e04040">*</span></label><input type="text" id="quote-company" placeholder="Aurelia Boutiques"></div>
+              <div class="filter-group"><label>Country <span style="color:#e04040">*</span></label><input type="text" id="quote-country" placeholder="Malaysia"></div>
+              <div class="filter-group"><label>Mobile Number <span style="color:#e04040">*</span></label><input type="tel" id="quote-mobile" placeholder="+1 234 567 8900"></div>
+              <div class="filter-group"><label>Email Address <span style="color:#e04040">*</span></label><input type="email" id="quote-email" placeholder="john@example.com"></div>
+              <div class="filter-group"><label>WhatsApp Number</label><input type="tel" id="quote-whatsapp" placeholder="+1 234 567 8900"></div>
+              <div class="filter-group">
+                <label>Buyer Type</label>
+                <select id="quote-buyer-type">
+                  <option value="Distributor">Distributor</option>
+                  <option value="Retailer">Retailer</option>
+                  <option value="Online Store">Online Store</option>
+                  <option value="Chain Store">Chain Store</option>
+                  <option value="Boutique">Boutique</option>
+                  <option value="Corporate">Corporate</option>
+                  <option value="Other">Other</option>
+                </select>
+              </div>
               <div class="filter-group">
                 <label>Quote Status</label>
                 <select id="quote-status">
@@ -486,6 +501,12 @@
 
         <!-- ══ BUYERS VIEW ═════════════════════════════ -->
         <section id="buyers-view" class="view">
+          <div class="filters-bar">
+            <div class="filter-group">
+              <label>Search Buyer</label>
+              <input type="text" id="buyers-search" placeholder="Name, company, email, phone...">
+            </div>
+          </div>
           <div class="table-container">
             <table class="data-table">
               <thead><tr>
@@ -686,9 +707,24 @@
           <button id="qe-close" class="icon-btn" aria-label="Close">✕</button>
         </div>
         <div class="modal-body">
-          <div class="filter-group"><label>Buyer Name</label><input type="text" id="qe-buyer-name" placeholder="Buyer Name"></div>
-          <div class="filter-group"><label>Company</label><input type="text" id="qe-company" placeholder="Company"></div>
-          <div class="filter-group"><label>Country</label><input type="text" id="qe-country" placeholder="Country"></div>
+          <div class="filter-group"><label>Buyer Name <span style="color:#e04040">*</span></label><input type="text" id="qe-buyer-name" placeholder="Buyer Name"></div>
+          <div class="filter-group"><label>Company <span style="color:#e04040">*</span></label><input type="text" id="qe-company" placeholder="Company"></div>
+          <div class="filter-group"><label>Country <span style="color:#e04040">*</span></label><input type="text" id="qe-country" placeholder="Country"></div>
+          <div class="filter-group"><label>Mobile Number <span style="color:#e04040">*</span></label><input type="tel" id="qe-mobile" placeholder="Mobile Number"></div>
+          <div class="filter-group"><label>Email Address <span style="color:#e04040">*</span></label><input type="email" id="qe-email" placeholder="Email Address"></div>
+          <div class="filter-group"><label>WhatsApp Number</label><input type="tel" id="qe-whatsapp" placeholder="WhatsApp Number"></div>
+          <div class="filter-group">
+            <label>Buyer Type</label>
+            <select id="qe-buyer-type">
+              <option value="Distributor">Distributor</option>
+              <option value="Retailer">Retailer</option>
+              <option value="Online Store">Online Store</option>
+              <option value="Chain Store">Chain Store</option>
+              <option value="Boutique">Boutique</option>
+              <option value="Corporate">Corporate</option>
+              <option value="Other">Other</option>
+            </select>
+          </div>
           <div class="filter-group">
             <label>Status</label>
             <select id="qe-status">
@@ -714,9 +750,24 @@
           <button id="be-close" class="icon-btn" aria-label="Close">✕</button>
         </div>
         <div class="modal-body">
-          <div class="filter-group"><label>Buyer Name</label><input type="text" id="be-buyer-name" placeholder="Buyer Name"></div>
-          <div class="filter-group"><label>Company</label><input type="text" id="be-company" placeholder="Company"></div>
-          <div class="filter-group"><label>Country</label><input type="text" id="be-country" placeholder="Country"></div>
+          <div class="filter-group"><label>Buyer Name <span style="color:#e04040">*</span></label><input type="text" id="be-buyer-name" placeholder="Buyer Name"></div>
+          <div class="filter-group"><label>Company <span style="color:#e04040">*</span></label><input type="text" id="be-company" placeholder="Company"></div>
+          <div class="filter-group"><label>Country <span style="color:#e04040">*</span></label><input type="text" id="be-country" placeholder="Country"></div>
+          <div class="filter-group"><label>Mobile Number <span style="color:#e04040">*</span></label><input type="tel" id="be-mobile" placeholder="Mobile Number"></div>
+          <div class="filter-group"><label>Email Address <span style="color:#e04040">*</span></label><input type="email" id="be-email" placeholder="Email Address"></div>
+          <div class="filter-group"><label>WhatsApp Number</label><input type="tel" id="be-whatsapp" placeholder="WhatsApp Number"></div>
+          <div class="filter-group">
+            <label>Buyer Type</label>
+            <select id="be-buyer-type">
+              <option value="Distributor">Distributor</option>
+              <option value="Retailer">Retailer</option>
+              <option value="Online Store">Online Store</option>
+              <option value="Chain Store">Chain Store</option>
+              <option value="Boutique">Boutique</option>
+              <option value="Corporate">Corporate</option>
+              <option value="Other">Other</option>
+            </select>
+          </div>
         </div>
         <div class="modal-footer">
           <button id="be-cancel" class="secondary-btn">Cancel</button>

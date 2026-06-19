@@ -64,6 +64,10 @@ const tbodyQuote        = document.getElementById('quote-table-body');
 const quoteName         = document.getElementById('quote-name');
 const quoteCompany      = document.getElementById('quote-company');
 const quoteCountry      = document.getElementById('quote-country');
+const quoteMobile       = document.getElementById('quote-mobile');
+const quoteEmail        = document.getElementById('quote-email');
+const quoteWhatsapp     = document.getElementById('quote-whatsapp');
+const quoteBuyerType    = document.getElementById('quote-buyer-type');
 const quoteStatus       = document.getElementById('quote-status');
 const docBuyerInfo      = document.getElementById('doc-buyer-info');
 const quoteItemCount    = document.getElementById('quote-item-count');
@@ -440,9 +444,15 @@ async function handleSaveQuote() {
   const buyerName = quoteName?.value.trim() || '';
   const company   = quoteCompany?.value.trim() || '';
   const country   = quoteCountry?.value.trim() || '';
+  const mobile    = quoteMobile?.value.trim() || '';
+  const email     = quoteEmail?.value.trim() || '';
+  const whatsapp  = quoteWhatsapp?.value.trim() || '';
+  const buyerType = quoteBuyerType?.value || '';
   const status    = quoteStatus?.value || 'Draft';
 
-  if (!buyerName) { showToast('Please enter a buyer name.', true); return; }
+  if (!buyerName || !company || !country || !mobile || !email) { showToast('Please complete all required buyer fields.', true); return; }
+  const emailRegex = /^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/;
+  if (!emailRegex.test(email)) { showToast('Please enter a valid email address.', true); return; }
   if (orderItems.length === 0) { showToast('Add at least one product to the order.', true); return; }
 
   const totalCost  = orderItems.reduce((s, i) => s + i.product.finalCost * i.qty, 0);
@@ -465,7 +475,7 @@ async function handleSaveQuote() {
   try {
     if (saveQuoteBtn) saveQuoteBtn.disabled = true;
     const { quoteNumber } = await saveQuote({
-      buyerName, company, country, status,
+      buyerName, company, country, mobile, email, whatsapp, buyerType, status,
       currency: currentCurrency,
       items, totalCost, totalValue, totalProfit, marginPct,
     });
@@ -485,9 +495,21 @@ function updateQuoteDocInfo() {
   const name = quoteName?.value.trim() || '';
   const comp = quoteCompany?.value.trim() || '';
   const ctry = quoteCountry?.value.trim() || '';
-  docBuyerInfo.innerHTML = (name || comp || ctry)
-    ? `<strong>${name || 'Unknown Buyer'}</strong><br>${comp || 'No Company'}${ctry ? '<br>' + ctry : ''}`
-    : 'Please enter buyer details.';
+  const mob  = quoteMobile?.value.trim() || '';
+  const eml  = quoteEmail?.value.trim() || '';
+  
+  let html = name ? `<strong>${name}</strong><br>` : '';
+  if (comp) html += `${comp}<br>`;
+  if (ctry) html += `${ctry}<br>`;
+  if (mob) html += `Mobile: ${mob}<br>`;
+  if (eml) html += `Email: ${eml}<br>`;
+  
+  docBuyerInfo.innerHTML = html || 'Please enter buyer details.';
+
+  if (saveQuoteBtn) {
+    const isValid = name && comp && ctry && mob && eml && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(eml);
+    saveQuoteBtn.disabled = !isValid;
+  }
 }
 
 // ── CRM: Dashboard ─────────────────────────────────────────
@@ -554,10 +576,24 @@ async function renderBuyers() {
   const r = await getReport();
   buyerDrawer?.classList.add('hidden');
 
+  const buyersSearchEl = document.getElementById('buyers-search');
+  const term = buyersSearchEl ? buyersSearchEl.value.toLowerCase() : '';
+
+  let filteredBuyers = r.allBuyers;
+  if (term) {
+    filteredBuyers = filteredBuyers.filter(b => 
+      (b.name && b.name.toLowerCase().includes(term)) ||
+      (b.company && b.company.toLowerCase().includes(term)) ||
+      (b.email && b.email.toLowerCase().includes(term)) ||
+      (b.phone && b.phone.toLowerCase().includes(term)) ||
+      (b.whatsapp && b.whatsapp.toLowerCase().includes(term))
+    );
+  }
+
   if (!tbodyBuyers) return;
-  tbodyBuyers.innerHTML = r.allBuyers.length === 0
-    ? `<tr><td colspan="9" class="empty-state">No buyers yet. Save a quote to add buyers.</td></tr>`
-    : r.allBuyers.map(b => `
+  tbodyBuyers.innerHTML = filteredBuyers.length === 0
+    ? `<tr><td colspan="9" class="empty-state">No buyers found.</td></tr>`
+    : filteredBuyers.map(b => `
       <tr class="expandable" data-name="${b.name}" title="Click to view quotes">
         <td style="color:var(--accent-gold); font-weight:500">${b.name}</td>
         <td>${b.company || '—'}</td>
@@ -619,9 +655,18 @@ async function renderOrders(filterText = '') {
   orderDrawer?.classList.add('hidden');
   currentOrderDrawerQuote = null;
 
-  const filtered = filterText
-    ? r.allQuotes.filter(q => q.buyerName.toLowerCase().includes(filterText.toLowerCase()))
-    : r.allQuotes;
+  let filtered = r.allQuotes;
+  if (filterText) {
+    const term = filterText.toLowerCase();
+    filtered = filtered.filter(q => 
+      (q.buyerName && q.buyerName.toLowerCase().includes(term)) ||
+      (q.company && q.company.toLowerCase().includes(term)) ||
+      (q.email && q.email.toLowerCase().includes(term)) ||
+      (q.phone && q.phone.toLowerCase().includes(term)) ||
+      (q.whatsapp && q.whatsapp.toLowerCase().includes(term)) ||
+      (q.quoteNumber && q.quoteNumber.toLowerCase().includes(term))
+    );
+  }
 
   if (!tbodyOrders) return;
   tbodyOrders.innerHTML = filtered.length === 0
@@ -750,6 +795,8 @@ window.printSavedQuote = function(quote, mode) {
           <div style="font-size:1.1rem; font-weight:600">${quote.buyerName}</div>
           <div>${quote.company || ''}</div>
           <div>${quote.country || ''}</div>
+          ${quote.phone ? `<div>Mobile: ${quote.phone}</div>` : ''}
+          ${quote.email ? `<div>Email: ${quote.email}</div>` : ''}
         </div>
         ${!isClient ? `
         <div>
@@ -891,17 +938,36 @@ function openQuoteEditModal(quote) {
   const nameEl   = document.getElementById('qe-buyer-name');
   const compEl   = document.getElementById('qe-company');
   const ctryEl   = document.getElementById('qe-country');
+  const mobEl    = document.getElementById('qe-mobile');
+  const emlEl    = document.getElementById('qe-email');
+  const waEl     = document.getElementById('qe-whatsapp');
+  const typeEl   = document.getElementById('qe-buyer-type');
   const statusEl = document.getElementById('qe-status');
+  
   if (nameEl)   nameEl.value   = quote.buyerName || '';
   if (compEl)   compEl.value   = quote.company || '';
   if (ctryEl)   ctryEl.value   = quote.country || '';
+  if (mobEl)    mobEl.value    = quote.phone || quote.mobile || '';
+  if (emlEl)    emlEl.value    = quote.email || '';
+  if (waEl)     waEl.value     = quote.whatsapp || '';
+  if (typeEl)   typeEl.value   = quote.buyerType || '';
   if (statusEl) statusEl.value = quote.status || 'Draft';
 
   document.getElementById('qe-save').onclick = async () => {
+    const email = emlEl?.value.trim() || '';
+    if (emlEl && email && !/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(email)) {
+      showToast('Please enter a valid email address.', true);
+      return;
+    }
+    
     const fields = {
       buyerName: nameEl?.value.trim() || quote.buyerName,
       company:   compEl?.value.trim() || '',
       country:   ctryEl?.value.trim() || '',
+      phone:     mobEl?.value.trim() || '',
+      email:     email,
+      whatsapp:  waEl?.value.trim() || '',
+      buyerType: typeEl?.value || '',
       status:    statusEl?.value || 'Draft',
     };
     try {
@@ -1330,6 +1396,10 @@ function setupEventListeners() {
   quoteName?.addEventListener('input', updateQuoteDocInfo);
   quoteCompany?.addEventListener('input', updateQuoteDocInfo);
   quoteCountry?.addEventListener('input', updateQuoteDocInfo);
+  quoteMobile?.addEventListener('input', updateQuoteDocInfo);
+  quoteEmail?.addEventListener('input', updateQuoteDocInfo);
+  quoteWhatsapp?.addEventListener('input', updateQuoteDocInfo);
+  quoteBuyerType?.addEventListener('change', updateQuoteDocInfo);
   saveQuoteBtn?.addEventListener('click', handleSaveQuote);
   
   if (printClientBtn) {
@@ -1349,8 +1419,9 @@ function setupEventListeners() {
 
   setupSizeMatrixSync();
 
-  // Orders search
+  // CRM & Search
   ordersSearch?.addEventListener('input', (e) => renderOrders(e.target.value));
+  document.getElementById('buyers-search')?.addEventListener('input', () => renderBuyers());
 
   // Drawers close
   document.getElementById('drawer-close')?.addEventListener('click', () => buyerDrawer?.classList.add('hidden'));
@@ -1490,16 +1561,34 @@ function openBuyerEditModal(buyer) {
   const nameEl = document.getElementById('be-buyer-name');
   const compEl = document.getElementById('be-company');
   const ctryEl = document.getElementById('be-country');
+  const mobEl  = document.getElementById('be-mobile');
+  const emlEl  = document.getElementById('be-email');
+  const waEl   = document.getElementById('be-whatsapp');
+  const typeEl = document.getElementById('be-buyer-type');
   
   if (nameEl) nameEl.value = buyer.name || '';
   if (compEl) compEl.value = buyer.company || '';
   if (ctryEl) ctryEl.value = buyer.country || '';
+  if (mobEl)  mobEl.value  = buyer.phone || buyer.mobile || '';
+  if (emlEl)  emlEl.value  = buyer.email || '';
+  if (waEl)   waEl.value   = buyer.whatsapp || '';
+  if (typeEl) typeEl.value = buyer.buyerType || '';
 
   document.getElementById('be-save').onclick = async () => {
+    const email = emlEl?.value.trim() || '';
+    if (emlEl && email && !/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(email)) {
+      showToast('Please enter a valid email address.', true);
+      return;
+    }
+    
     const fields = {
       name: nameEl?.value.trim() || buyer.name,
       company: compEl?.value.trim() || '',
       country: ctryEl?.value.trim() || '',
+      phone: mobEl?.value.trim() || '',
+      email: email,
+      whatsapp: waEl?.value.trim() || '',
+      buyerType: typeEl?.value || '',
     };
     try {
       await updateBuyerFields(buyer.id, fields);
