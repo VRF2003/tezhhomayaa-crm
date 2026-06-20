@@ -1,5 +1,6 @@
 import html2pdf from 'html2pdf.js';
 import { toNumber, calcLineTotal, formatCurrency } from './utils/calc.js';
+import { logoBase64 } from './logoBase64.js';
 
 /**
  * Generates a luxury PDF quotation from a quote object.
@@ -153,10 +154,14 @@ export async function generateLuxuryPDF(quote, mode, settings, rates) {
       </style>
       
       <!-- HEADER -->
-      <div style="text-align: center; margin-bottom: 50px;">
-        <img src="${window.location.origin}/logo.png" alt="Tezhhomayaa Logo" style="height: 50px; object-fit: contain; margin-bottom: 10px;" />
-        <h1 style="font-size: 20px; font-weight: 400; letter-spacing: 4px; text-transform: uppercase; margin: 0; color: #555;">Formal Quotation</h1>
-        ${isInternal ? '<div style="margin-top:8px; font-size: 12px; color: #d32f2f; font-weight: 600; letter-spacing: 2px; font-family: sans-serif;">INTERNAL COSTING VIEW</div>' : ''}
+      <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 50px;">
+        <div style="text-align: left;">
+          <h1 style="font-size: 24px; font-weight: 400; letter-spacing: 4px; text-transform: uppercase; margin: 0; color: #555;">Formal Quotation</h1>
+          ${isInternal ? '<div style="margin-top:8px; font-size: 12px; color: #d32f2f; font-weight: 600; letter-spacing: 2px; font-family: sans-serif;">INTERNAL COSTING VIEW</div>' : ''}
+        </div>
+        <div style="text-align: right;">
+          <img src="${logoBase64}" alt="Tezhhomayaa Logo" style="height: 40px; object-fit: contain;" />
+        </div>
       </div>
 
       <!-- INFO BLOCK -->
