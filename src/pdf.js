@@ -1,19 +1,18 @@
 import html2pdf from 'html2pdf.js';
+import { toNumber, calcLineTotal, formatCurrency } from './utils/calc.js';
 
 /**
  * Generates a luxury PDF quotation from a quote object.
  * @param {Object} quote - The quote object (needs buyer details and items).
  * @param {String} mode - 'client' or 'internal'
  * @param {Object} settings - PDF settings containing companyName, etc.
+ * @param {Object} rates - The global exchangeRates object.
  */
-export async function generateLuxuryPDF(quote, mode, settings) {
+export async function generateLuxuryPDF(quote, mode, settings, rates) {
   const isInternal = mode === 'internal';
   
   // Format currency helper
-  const formatCur = (num) => new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: settings?.currency || 'USD',
-  }).format(num || 0);
+  const formatCur = (num) => formatCurrency(num, settings?.currency || 'USD', rates);
 
   // Group items by Silhouette and Override MOQ for MOQ Table
   const silTotals = {};
@@ -33,9 +32,9 @@ export async function generateLuxuryPDF(quote, mode, settings) {
   });
 
   // Calculate overall totals
-  const totalQty = items.reduce((sum, i) => sum + i.qty, 0);
-  const totalCost = items.reduce((sum, i) => sum + ((i.product?.finalCost || 0) * i.qty), 0);
-  const totalValue = items.reduce((sum, i) => sum + (i.unitPrice * i.qty), 0);
+  const totalQty = items.reduce((sum, i) => sum + toNumber(i.qty), 0);
+  const totalCost = items.reduce((sum, i) => sum + calcLineTotal(i.product?.finalCost || 0, i.qty), 0);
+  const totalValue = items.reduce((sum, i) => sum + calcLineTotal(i.unitPrice, i.qty), 0);
   const totalProfit = totalValue - totalCost;
   const marginPct = totalValue > 0 ? (totalProfit / totalValue) * 100 : 0;
 
@@ -55,6 +54,8 @@ export async function generateLuxuryPDF(quote, mode, settings) {
       if (item.sizes.xxl) sizesSummary.push(`2XL:${item.sizes.xxl}`);
     }
     
+    const lineTotal = calcLineTotal(item.unitPrice, item.qty);
+    
     let trHtml = `
       <tr style="border-bottom: 1px solid #eee;">
         <td style="padding: 12px 0;">${idx + 1}</td>
@@ -67,16 +68,17 @@ export async function generateLuxuryPDF(quote, mode, settings) {
         </td>
         <td style="padding: 12px 0; text-align: center;">${item.qty}</td>
         <td style="padding: 12px 0; text-align: right;">${formatCur(item.unitPrice)}</td>
-        <td style="padding: 12px 0; text-align: right; font-weight: 600;">${formatCur(item.total)}</td>
+        <td style="padding: 12px 0; text-align: right; font-weight: 600;">${formatCur(lineTotal)}</td>
     `;
     
     if (isInternal) {
       const cost = prod.finalCost || 0;
-      const profit = item.unitPrice - cost;
-      const margin = item.unitPrice > 0 ? (profit / item.unitPrice) * 100 : 0;
+      const lineCost = calcLineTotal(cost, item.qty);
+      const lineProfit = lineTotal - lineCost;
+      const margin = lineTotal > 0 ? (lineProfit / lineTotal) * 100 : 0;
       trHtml += `
         <td style="padding: 12px 0; text-align: right; border-left: 1px solid #eee; padding-left: 12px; color: #d32f2f">${formatCur(cost)}</td>
-        <td style="padding: 12px 0; text-align: right; color: #2e7d32">${formatCur(profit)}</td>
+        <td style="padding: 12px 0; text-align: right; color: #2e7d32">${formatCur(lineProfit)}</td>
         <td style="padding: 12px 0; text-align: right; color: #2e7d32">${margin.toFixed(1)}%</td>
       `;
     }

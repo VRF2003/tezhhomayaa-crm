@@ -4,15 +4,16 @@ import { openDB, db_quotes, db_buyers, db_settings, executeMigrations, exportDat
 import { saveQuote, getReport, deleteQuote, updateQuoteFields, archiveQuote, restoreQuote, duplicateQuote, archiveBuyer, deleteBuyer, updateBuyerFields } from './crm.js';
 import { testGoogleSheetsConnection, syncOrderToSheets } from './gsheets.js';
 import { generateLuxuryPDF } from './pdf.js';
+import { toNumber, calcLineTotal, calcSizeTotal, formatCurrency } from './utils/calc.js';
 
 // ── State ──────────────────────────────────────────────────
-let orderItems = [];
-let filters = { search: '', category: '', design: '', colour: '', styleCode: '' };
-let currentCurrency = 'USD';
+export let orderItems = [];
+export let filters = { search: '', category: '', design: '', colour: '', styleCode: '' };
+export let currentCurrency = 'USD';
 let currentOrderDrawerQuote = null; // track open drawer quote for "Load into Builder"
 let pdfSettings = {}; // track global PDF Settings
 
-const exchangeRates = {
+export const exchangeRates = {
   USD: { symbol: '$',    rate: 1 },
   AED: { symbol: 'د.إ', rate: 3.67 },
   INR: { symbol: '₹',   rate: 83.5 },
@@ -95,11 +96,7 @@ const orderDrawerItems = document.getElementById('order-drawer-items');
 const orderLoadBuilderBtn = document.getElementById('order-load-builder-btn');
 
 // ── Utility ────────────────────────────────────────────────
-const formatCur = (num) => {
-  if (isNaN(num) || num == null) return '—';
-  const { symbol, rate } = exchangeRates[currentCurrency];
-  return `${symbol}${(num * rate).toFixed(2)}`;
-};
+const formatCur = (num) => formatCurrency(num, currentCurrency, exchangeRates);
 
 const formatDate = (iso) => {
   if (!iso) return '—';
@@ -113,8 +110,7 @@ function statusBadge(status) {
 }
 
 function calculateTotalQty(sizes) {
-  if (!sizes) return 0;
-  return Object.values(sizes).reduce((sum, val) => sum + (parseInt(val) || 0), 0);
+  return calcSizeTotal(sizes);
 }
 
 function formatSizeBreakdown(sizes) {
@@ -430,8 +426,8 @@ function updateOrderViews() {
     tbodyQuote.innerHTML   = `<tr><td colspan="6"  class="empty-state">No items added yet.</td></tr>`;
   } else {
     tbodyBuilder.innerHTML = orderItems.map((item, i) => {
-      const lineCost  = item.product.finalCost * item.qty;
-      const lineTotal = item.unitPrice * item.qty;
+      const lineCost  = calcLineTotal(item.product.finalCost, item.qty);
+      const lineTotal = calcLineTotal(item.unitPrice, item.qty);
       const profit    = lineTotal - lineCost;
       const margin    = lineTotal > 0 ? (profit / lineTotal) * 100 : 0;
       totalValue += lineTotal; totalCost += lineCost; totalQty += item.qty;
@@ -470,8 +466,8 @@ function updateOrderViews() {
     };
 
     tbodyQuote.innerHTML = orderItems.map(item => {
-      const lineTotal = item.unitPrice * item.qty;
-      const lineCost = item.product.finalCost * item.qty;
+      const lineTotal = calcLineTotal(item.unitPrice, item.qty);
+      const lineCost = calcLineTotal(item.product.finalCost, item.qty);
       const lineProfit = lineTotal - lineCost;
       const lineMargin = lineTotal > 0 ? (lineProfit / lineTotal) * 100 : 0;
       return `<tr>
@@ -942,17 +938,22 @@ function openOrderDrawer(quote) {
   if (!orderDrawer || !orderDrawerTitle || !orderDrawerItems) return;
   currentOrderDrawerQuote = quote;
   orderDrawerTitle.textContent = `${quote.quoteNumber} — ${quote.buyerName}`;
-  orderDrawerItems.innerHTML = quote.items.map(item => `<tr>
-    <td>${item.productName}</td>
-    <td>${item.styleCode}</td>
-    <td>${item.tier.replace('wholesale','WS ')}</td>
-    <td class="currency internal-col">${formatCur(item.finalCost)}</td>
-    <td class="currency">${formatCur(item.unitPrice)}</td>
-    <td class="size-breakdown">${formatSizeBreakdown(item.sizes)}</td>
-    <td>${item.qty}</td>
-    <td class="currency">${formatCur(item.unitPrice * item.qty)}</td>
-    <td class="currency internal-col" style="color:var(--accent-green)">${formatCur((item.unitPrice - item.finalCost) * item.qty)}</td>
-  </tr>`).join('');
+  orderDrawerItems.innerHTML = quote.items.map(item => {
+    const lineCost = calcLineTotal(item.finalCost, item.qty);
+    const lineTotal = calcLineTotal(item.unitPrice, item.qty);
+    const lineProfit = lineTotal - lineCost;
+    return `<tr>
+      <td>${item.productName}</td>
+      <td>${item.styleCode}</td>
+      <td>${item.tier.replace('wholesale','WS ')}</td>
+      <td class="currency internal-col">${formatCur(item.finalCost)}</td>
+      <td class="currency">${formatCur(item.unitPrice)}</td>
+      <td class="size-breakdown">${formatSizeBreakdown(item.sizes)}</td>
+      <td>${item.qty}</td>
+      <td class="currency">${formatCur(lineTotal)}</td>
+      <td class="currency internal-col" style="color:var(--accent-green)">${formatCur(lineProfit)}</td>
+    </tr>`;
+  }).join('');
 
   orderDrawer.classList.remove('hidden');
   orderDrawer.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -963,7 +964,7 @@ window.printSavedQuote = async function(quote, mode) {
   // Show a simple loading toast
   showToast('Generating PDF...');
   try {
-    await generateLuxuryPDF(quote, mode, pdfSettings);
+    await generateLuxuryPDF(quote, mode, pdfSettings, exchangeRates);
   } catch (error) {
     showToast('Failed to generate PDF.', true);
   }
@@ -1526,7 +1527,7 @@ function setupEventListeners() {
     printClientBtn.addEventListener('click', async () => {
       showToast('Generating Client PDF...');
       try {
-        await generateLuxuryPDF(buildCurrentQuote(), 'client', pdfSettings);
+        await generateLuxuryPDF(buildCurrentQuote(), 'client', pdfSettings, exchangeRates);
       } catch (e) {
         showToast('Failed to generate PDF.', true);
       }
@@ -1536,7 +1537,7 @@ function setupEventListeners() {
     printInternalBtn.addEventListener('click', async () => {
       showToast('Generating Internal PDF...');
       try {
-        await generateLuxuryPDF(buildCurrentQuote(), 'internal', pdfSettings);
+        await generateLuxuryPDF(buildCurrentQuote(), 'internal', pdfSettings, exchangeRates);
       } catch (e) {
         showToast('Failed to generate PDF.', true);
       }

@@ -1,15 +1,10 @@
 import Papa from 'papaparse';
 import { db_products } from './db.js';
+import { toNumber } from './utils/calc.js';
 
 export let products = [];
 
 export const getUniqueValues = (key) => [...new Set(products.map(p => p[key]).filter(Boolean))].sort();
-
-function parseNumber(val) {
-  if (!val) return 0;
-  const num = parseFloat(String(val).replace(/[^0-9.-]+/g,""));
-  return isNaN(num) ? 0 : num;
-}
 
 export async function loadProducts() {
   try {
@@ -46,12 +41,12 @@ export async function loadProducts() {
                 styleCode: row['Style Code'] || 'N/A',
                 category: row['Cateogry '] || row['Category'] || 'N/A',
                 fabric: row['Fabric'] || 'N/A',
-                cost: parseNumber(row['Costing With Admin']),
-                finalCost: parseNumber(row['Admin With Logistics Cost']),
-                retailPrice: parseNumber(row['Retail Price']),
-                wholesale50: parseNumber(row['Wholesale Price - 50% Off']),
-                wholesale40: parseNumber(row['Wholesale Price - 40% Off']),
-                wholesale30: parseNumber(row['Wholesale Price - 30% Off'])
+                cost: toNumber(row['Costing With Admin']),
+                finalCost: toNumber(row['Admin With Logistics Cost']),
+                retailPrice: toNumber(row['Retail Price']),
+                wholesale50: toNumber(row['Wholesale Price - 50% Off']),
+                wholesale40: toNumber(row['Wholesale Price - 40% Off']),
+                wholesale30: toNumber(row['Wholesale Price - 30% Off'])
               };
             }).filter(p => p.styleCode !== 'N/A' && p.styleCode !== '');
             resolve();
