@@ -239,7 +239,7 @@
                 <th>Product</th><th>Design</th><th>Colour</th><th>Style Code</th>
                 <th>Category</th><th>Fabric</th><th>Cost</th><th>Final Cost</th>
                 <th>Retail</th><th>WS 50</th><th>WS 40</th><th>WS 30</th>
-                <th>Actions</th>
+                <th>Status</th><th>MOQ</th><th class="actions-col">Actions</th>
               </tr></thead>
               <tbody id="product-table-body"></tbody>
             </table>
@@ -835,6 +835,15 @@
           <div class="filter-group">
             <label>Silhouette</label>
             <input type="text" id="pm-silhouette" placeholder="E.g. A-Line (Leave empty for Uncategorized)">
+          </div>
+          <div class="filter-group" style="grid-column: 1 / -1; background: var(--bg-dark); padding: 10px; border-radius: var(--radius-sm); border: 1px solid var(--border-color);">
+            <label style="margin-bottom: 8px;">Product MOQ</label>
+            <label style="display:flex; align-items:center; gap:8px; font-weight:normal; margin-bottom: 8px;">
+              <input type="checkbox" id="pm-use-silhouette-moq" checked> Use Silhouette MOQ
+            </label>
+            <div id="pm-override-moq-container" style="display:none;">
+              <input type="number" id="pm-override-moq" placeholder="Enter custom MOQ for this product" min="1">
+            </div>
           </div>
           <div class="filter-group">
             <label>Design <span style="color:#e04040">*</span></label>

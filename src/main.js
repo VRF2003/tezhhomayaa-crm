@@ -345,6 +345,14 @@ function renderSearchTable() {
         <td class="currency" style="color:var(--accent-gold)">${formatCur(p.wholesale50)}</td>
         <td class="currency" style="color:var(--accent-blue)">${formatCur(p.wholesale40)}</td>
         <td class="currency">${formatCur(p.wholesale30)}</td>
+        <td>
+          <span style="display:inline-block; padding:2px 8px; border-radius:12px; font-size:0.75rem; 
+            background:${(p.status||'Active')==='Active' ? 'rgba(46,125,50,0.2)' : 'rgba(224,64,64,0.2)'}; 
+            color:${(p.status||'Active')==='Active' ? 'var(--accent-green)' : '#e04040'}">
+            ${p.status || 'Active'}
+          </span>
+        </td>
+        <td>${p.overrideMoq != null ? `<strong>${p.overrideMoq}</strong>` : '<span style="color:var(--text-secondary); font-size:0.8rem">Sil. Default</span>'}</td>
         <td class="actions-cell">
           <button class="icon-btn edit-product-btn" data-stylecode="${p.styleCode}" title="Edit Product">✏️</button>
           <button class="icon-btn delete-product-btn" data-stylecode="${p.styleCode}" title="Delete Product">🗑️</button>
@@ -485,28 +493,42 @@ function updateOrderViews() {
 
   if (builderTotal) builderTotal.textContent = formatCur(totalValue);
     
-    // Silhouette MOQ Logic
+    // Hybrid MOQ Logic
     const moqs = pdfSettings.silhouetteMoqs || {};
-    const hasMoqs = Object.keys(moqs).length > 0;
     const moqContainer = document.getElementById('builder-moq-status');
     const moqCardsGrid = document.getElementById('builder-moq-cards');
     
     if (moqContainer && moqCardsGrid) {
-      if (!hasMoqs || orderItems.length === 0) {
+      if (orderItems.length === 0) {
         moqContainer.style.display = 'none';
       } else {
-        moqContainer.style.display = 'block';
         const silTotals = {};
+        const overrideTotals = {};
+        
         orderItems.forEach(item => {
-          const sil = item.product.silhouette || 'Uncategorized';
-          silTotals[sil] = (silTotals[sil] || 0) + item.qty;
+          if (item.product.overrideMoq != null) {
+            // Track in Individual Override Pool
+            const pName = item.product.productName;
+            if (!overrideTotals[pName]) {
+              overrideTotals[pName] = { qty: 0, required: item.product.overrideMoq };
+            }
+            overrideTotals[pName].qty += item.qty;
+          } else {
+            // Track in Silhouette Pool
+            const sil = item.product.silhouette || 'Uncategorized';
+            silTotals[sil] = (silTotals[sil] || 0) + item.qty;
+          }
         });
         
         let moqHtml = '';
+        let hasCards = false;
+        
+        // 1. Render Silhouette Cards
         for (const [sil, required] of Object.entries(moqs)) {
           const cartQty = silTotals[sil] || 0;
-          if (cartQty === 0) continue; // Only show progress cards for silhouettes actually in the cart
+          if (cartQty === 0) continue; 
           
+          hasCards = true;
           const remaining = Math.max(0, required - cartQty);
           const { pct, color } = getMoqProgress(cartQty, required);
           const isComplete = pct === 100;
@@ -528,19 +550,62 @@ function updateOrderViews() {
                   <ul>
                     <li>Wholesale pricing secured</li>
                     <li>Priority production scheduling</li>
-                    <li>Guaranteed factory confirmation</li>
                   </ul>
                 </div>
               ` : `
                 <div class="moq-upsell">
                   <div class="moq-upsell-title">Almost there!</div>
-                  <div style="color: var(--text-secondary)">Add <strong>${remaining}</strong> more items to unlock wholesale pricing and priority dispatch.</div>
+                  <div style="color: var(--text-secondary)">Add <strong>${remaining}</strong> more items to unlock wholesale pricing.</div>
                 </div>
               `}
             </div>
           `;
         }
-        moqCardsGrid.innerHTML = moqHtml;
+        
+        // 2. Render Override Cards
+        for (const [pName, data] of Object.entries(overrideTotals)) {
+          hasCards = true;
+          const cartQty = data.qty;
+          const required = data.required;
+          const remaining = Math.max(0, required - cartQty);
+          const { pct, color } = getMoqProgress(cartQty, required);
+          const isComplete = pct === 100;
+          
+          moqHtml += `
+            <div class="moq-progress-container">
+              <div class="moq-progress-header">
+                <div class="moq-progress-title">${pName} <span style="font-size:0.7rem; background:#444; padding:2px 6px; border-radius:10px; margin-left:5px;">Override</span></div>
+                <div class="moq-progress-stats" style="color: ${color}">
+                  <strong>${cartQty}</strong> / ${required} (${pct}%)
+                </div>
+              </div>
+              <div class="moq-progress-bg">
+                <div class="moq-progress-fill" style="width: ${pct}%; background-color: ${color}"></div>
+              </div>
+              ${isComplete ? `
+                <div class="moq-benefits">
+                  <strong>✓ MOQ Achieved! Benefits Unlocked:</strong>
+                  <ul>
+                    <li>Wholesale pricing secured</li>
+                    <li>Priority production scheduling</li>
+                  </ul>
+                </div>
+              ` : `
+                <div class="moq-upsell">
+                  <div class="moq-upsell-title">Almost there!</div>
+                  <div style="color: var(--text-secondary)">Add <strong>${remaining}</strong> more pieces of ${pName} to unlock wholesale pricing.</div>
+                </div>
+              `}
+            </div>
+          `;
+        }
+        
+        if (hasCards) {
+          moqContainer.style.display = 'block';
+          moqCardsGrid.innerHTML = moqHtml;
+        } else {
+          moqContainer.style.display = 'none';
+        }
       }
     }
 
@@ -574,21 +639,40 @@ async function handleSaveQuote() {
   // ── MOQ Validation ──
   const moqs = pdfSettings?.silhouetteMoqs || {};
   const silTotals = {};
+  const overrideTotals = {};
+
   orderItems.forEach(item => {
-    const sil = item.product.silhouette || 'Uncategorized';
-    silTotals[sil] = (silTotals[sil] || 0) + item.qty;
+    if (item.product.overrideMoq != null) {
+      const pName = item.product.productName;
+      if (!overrideTotals[pName]) {
+        overrideTotals[pName] = { qty: 0, required: item.product.overrideMoq };
+      }
+      overrideTotals[pName].qty += item.qty;
+    } else {
+      const sil = item.product.silhouette || 'Uncategorized';
+      silTotals[sil] = (silTotals[sil] || 0) + item.qty;
+    }
   });
 
-  const failedSils = [];
+  const failedMoqs = [];
+  
+  // Validate Silhouette Pools
   for (const [sil, required] of Object.entries(moqs)) {
     const cartQty = silTotals[sil] || 0;
-    if (cartQty > 0 && cartQty < required) { // Only check MOQ if they ordered at least 1 of that silhouette
-      failedSils.push(`${sil}: ${cartQty} / ${required} (Need ${required - cartQty} more)`);
+    if (cartQty > 0 && cartQty < required) {
+      failedMoqs.push(`${sil}: ${cartQty} / ${required} (Need ${required - cartQty} more)`);
+    }
+  }
+  
+  // Validate Override Pools
+  for (const [pName, data] of Object.entries(overrideTotals)) {
+    if (data.qty > 0 && data.qty < data.required) {
+      failedMoqs.push(`${pName} (Override): ${data.qty} / ${data.required} (Need ${data.required - data.qty} more)`);
     }
   }
 
-  if (failedSils.length > 0) {
-    showToast(`Cannot save quote. MOQ not met for:\n${failedSils.join('\n')}`, true);
+  if (failedMoqs.length > 0) {
+    showToast(`Cannot save quote. MOQ not met for:\n${failedMoqs.join('\n')}`, true);
     return;
   }
   // ────────────────────
@@ -1779,6 +1863,9 @@ function setupEventListeners() {
     document.getElementById('pm-name').value = '';
     document.getElementById('pm-category').value = '';
     document.getElementById('pm-silhouette').value = '';
+    document.getElementById('pm-use-silhouette-moq').checked = true;
+    document.getElementById('pm-override-moq-container').style.display = 'none';
+    document.getElementById('pm-override-moq').value = '';
     document.getElementById('pm-design').value = '';
     document.getElementById('pm-colour').value = '';
     document.getElementById('pm-stylecode').value = '';
@@ -1799,6 +1886,10 @@ function setupEventListeners() {
     pmModal?.classList.remove('hidden');
   });
 
+  document.getElementById('pm-use-silhouette-moq')?.addEventListener('change', (e) => {
+    document.getElementById('pm-override-moq-container').style.display = e.target.checked ? 'none' : 'block';
+  });
+
   pmSave?.addEventListener('click', async () => {
     const pName = document.getElementById('pm-name').value.trim();
     const pCategory = document.getElementById('pm-category').value.trim();
@@ -1814,6 +1905,7 @@ function setupEventListeners() {
       productName: pName,
       category: pCategory,
       silhouette: document.getElementById('pm-silhouette').value.trim() || 'Uncategorized',
+      overrideMoq: document.getElementById('pm-use-silhouette-moq').checked ? null : (parseInt(document.getElementById('pm-override-moq').value) || null),
       design: pDesign,
       colour: pColour,
       styleCode: pStylecode,
@@ -1884,6 +1976,12 @@ function setupEventListeners() {
       document.getElementById('pm-name').value = prod.productName || '';
       document.getElementById('pm-category').value = prod.category || '';
       document.getElementById('pm-silhouette').value = prod.silhouette || '';
+      
+      const hasOverride = prod.overrideMoq != null;
+      document.getElementById('pm-use-silhouette-moq').checked = !hasOverride;
+      document.getElementById('pm-override-moq-container').style.display = hasOverride ? 'block' : 'none';
+      document.getElementById('pm-override-moq').value = hasOverride ? prod.overrideMoq : '';
+
       document.getElementById('pm-design').value = prod.design || '';
       document.getElementById('pm-colour').value = prod.colour || '';
       document.getElementById('pm-stylecode').value = prod.styleCode || '';
@@ -2025,20 +2123,38 @@ function updateLiveMoqStatus() {
     return;
   }
   
+  const isOverride = product.overrideMoq != null;
   const sil = product.silhouette || 'Uncategorized';
   const moqs = pdfSettings?.silhouetteMoqs || {};
-  const requiredMoq = moqs[sil];
+  
+  let requiredMoq;
+  let titlePrefix;
+  if (isOverride) {
+    requiredMoq = product.overrideMoq;
+    titlePrefix = `Live MOQ: ${product.productName}`;
+  } else {
+    requiredMoq = moqs[sil];
+    titlePrefix = `Live MOQ: ${sil}`;
+  }
   
   if (!requiredMoq) {
     panel.style.display = 'none';
     return;
   }
   
-  // Calculate qty in cart for this silhouette
+  // Calculate qty in cart for this pool
   let cartQty = 0;
   orderItems.forEach(item => {
-    if ((item.product.silhouette || 'Uncategorized') === sil) {
-      cartQty += item.qty;
+    if (isOverride) {
+      // Individual pool: only count this exact product name
+      if (item.product.productName === product.productName) {
+        cartQty += item.qty;
+      }
+    } else {
+      // Silhouette pool: count items in the silhouette, EXCEPT those that have their own override
+      if ((item.product.silhouette || 'Uncategorized') === sil && item.product.overrideMoq == null) {
+        cartQty += item.qty;
+      }
     }
   });
   
@@ -2053,10 +2169,10 @@ function updateLiveMoqStatus() {
   const isComplete = pct === 100;
 
   let upsellHtml = '';
-  if (!isComplete) {
-    // Find up to 3 OTHER products from the same silhouette
+  if (!isComplete && !isOverride) {
+    // Find up to 3 OTHER standard products from the same silhouette
     const upsells = products
-      .filter(p => p.silhouette === sil && p.productName !== pVal)
+      .filter(p => p.silhouette === sil && p.productName !== pVal && p.overrideMoq == null)
       .reduce((unique, p) => {
         if (!unique.some(u => u.productName === p.productName)) {
           unique.push(p);
@@ -2080,7 +2196,7 @@ function updateLiveMoqStatus() {
   panel.innerHTML = `
     <div class="moq-progress-container" style="margin-bottom:0; background:var(--bg-dark)">
       <div class="moq-progress-header">
-        <div class="moq-progress-title">Live MOQ: ${sil}</div>
+        <div class="moq-progress-title">${titlePrefix} ${isOverride ? '<span style="font-size:0.7rem; background:#444; padding:2px 6px; border-radius:10px; margin-left:5px;">Override</span>' : ''}</div>
         <div class="moq-progress-stats" style="color: ${color}">
           <strong>${totalQty}</strong> / ${requiredMoq} (${pct}%)
         </div>
