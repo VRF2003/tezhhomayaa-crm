@@ -1,4 +1,5 @@
 import Papa from 'papaparse';
+import { db_products } from './db.js';
 
 export let products = [];
 
@@ -33,7 +34,7 @@ export async function loadProducts() {
         header: true,
         skipEmptyLines: true,
         complete: (results) => {
-          products = results.data.map(row => {
+          let csvProducts = results.data.map(row => {
             return {
               productName: row['Product'] || 'Unknown',
               design: row['Design'] || 'N/A',
@@ -49,15 +50,44 @@ export async function loadProducts() {
               wholesale30: parseNumber(row['Wholesale Price - 30% Off'])
             };
           }).filter(p => p.styleCode !== 'N/A' && p.styleCode !== ''); // Filter out completely empty parsed rows
-          resolve();
+          resolve(csvProducts);
         },
         error: (err) => {
           console.error("Error parsing CSV:", err);
-          reject(err);
+          resolve([]); // Resolve with empty array instead of rejecting so local products still load
         }
       });
     });
+    
+    // Load local DB products
+    let localProducts = [];
+    try {
+      localProducts = await db_products.getAll();
+    } catch(err) {
+      console.error("Error loading local products:", err);
+    }
+
+    // Merge logic: local DB overrides CSV based on styleCode
+    const merged = [...csvProducts];
+    
+    for (const lp of localProducts) {
+      const idx = merged.findIndex(p => p.styleCode === lp.styleCode);
+      if (idx !== -1) {
+        merged[idx] = { ...merged[idx], ...lp };
+      } else {
+        merged.push(lp);
+      }
+    }
+    
+    // Assign back to exported products array, filtering out Draft products if needed? 
+    // Wait, the prompt says Status (Active / Draft). We should just load them all, or only Active ones?
+    // Let's load all of them into the products array so they can be managed in Search. 
+    // In Builder, maybe filter by Active. The prompt doesn't strictly say, but usually Draft means not visible in builder. 
+    // I will just put all of them in the array, and we can filter by status later.
+    products = merged;
+
   } catch (error) {
-    console.error("Error fetching products.csv:", error);
+    console.error("Error fetching products:", error);
   }
 }
+

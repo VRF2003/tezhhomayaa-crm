@@ -230,12 +230,16 @@
               <select id="filter-stylecode"><option value="">All</option></select>
             </div>
           </div>
+          <div style="display:flex; justify-content:flex-end; margin-bottom: 1rem;">
+            <button id="add-product-btn" class="primary-btn" style="background:var(--accent-gold); color:var(--bg-dark); border-color:var(--accent-gold);">+ Add Product</button>
+          </div>
           <div class="table-container">
             <table class="data-table">
               <thead><tr>
                 <th>Product</th><th>Design</th><th>Colour</th><th>Style Code</th>
                 <th>Category</th><th>Fabric</th><th>Cost</th><th>Final Cost</th>
                 <th>Retail</th><th>WS 50</th><th>WS 40</th><th>WS 30</th>
+                <th>Actions</th>
               </tr></thead>
               <tbody id="product-table-body"></tbody>
             </table>
@@ -782,6 +786,101 @@
         <div class="modal-footer">
           <button id="be-cancel" class="secondary-btn">Cancel</button>
           <button id="be-save" class="primary-btn">Save Changes</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ PRODUCT FORM MODAL ══════════════════════════ -->
+    <div id="product-form-modal" class="modal-overlay hidden" role="dialog" aria-modal="true">
+      <div class="modal-box" style="max-width: 600px; max-height: 90vh; overflow-y: auto;">
+        <div class="modal-header">
+          <h3 id="pm-title">Add Product</h3>
+          <button id="pm-close" class="icon-btn" aria-label="Close">✕</button>
+        </div>
+        <div class="modal-body" style="display:grid; grid-template-columns: 1fr 1fr; gap:15px">
+          <input type="hidden" id="pm-id">
+          
+          <div class="filter-group">
+            <label>Product Name <span style="color:#e04040">*</span></label>
+            <input type="text" id="pm-name" placeholder="E.g. Luxury Handbag">
+          </div>
+          <div class="filter-group">
+            <label>Category <span style="color:#e04040">*</span></label>
+            <input type="text" id="pm-category" placeholder="E.g. Bags">
+          </div>
+          <div class="filter-group">
+            <label>Design <span style="color:#e04040">*</span></label>
+            <input type="text" id="pm-design" placeholder="E.g. Classic">
+          </div>
+          <div class="filter-group">
+            <label>Colour <span style="color:#e04040">*</span></label>
+            <input type="text" id="pm-colour" placeholder="E.g. Black">
+          </div>
+          <div class="filter-group">
+            <label>Style Code <span style="color:#e04040">*</span></label>
+            <input type="text" id="pm-stylecode" placeholder="E.g. BAG-001">
+          </div>
+          <div class="filter-group">
+            <label>Fabric</label>
+            <input type="text" id="pm-fabric" placeholder="E.g. Leather">
+          </div>
+          <div class="filter-group">
+            <label>Cost</label>
+            <input type="number" step="0.01" id="pm-cost" placeholder="0.00">
+          </div>
+          <div class="filter-group">
+            <label>Final Cost</label>
+            <input type="number" step="0.01" id="pm-finalcost" placeholder="0.00">
+          </div>
+          <div class="filter-group">
+            <label>Retail Price</label>
+            <input type="number" step="0.01" id="pm-retail" placeholder="0.00">
+          </div>
+          <div class="filter-group">
+            <label>WS 50 Price</label>
+            <input type="number" step="0.01" id="pm-ws50" placeholder="0.00">
+          </div>
+          <div class="filter-group">
+            <label>WS 40 Price</label>
+            <input type="number" step="0.01" id="pm-ws40" placeholder="0.00">
+          </div>
+          <div class="filter-group">
+            <label>WS 30 Price</label>
+            <input type="number" step="0.01" id="pm-ws30" placeholder="0.00">
+          </div>
+          <div class="filter-group">
+            <label>Status</label>
+            <select id="pm-status">
+              <option value="Active">Active</option>
+              <option value="Draft">Draft</option>
+            </select>
+          </div>
+          <div class="filter-group">
+            <label>Product Image (Optional)</label>
+            <input type="file" id="pm-image" accept="image/*">
+            <img id="pm-image-preview" src="" alt="Preview" style="display:none; max-width: 100px; max-height: 100px; margin-top: 10px; border-radius: 4px;">
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button id="pm-cancel" class="secondary-btn">Cancel</button>
+          <button id="pm-save" class="primary-btn">Save Product</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ PRODUCT DELETE MODAL ══════════════════════════ -->
+    <div id="product-delete-modal" class="modal-overlay hidden" role="dialog" aria-modal="true">
+      <div class="modal-box modal-box--sm">
+        <div class="modal-header">
+          <h3>Delete Product</h3>
+          <button id="pd-close" class="icon-btn" aria-label="Close">✕</button>
+        </div>
+        <div class="modal-body">
+          <p id="pd-msg" style="color:var(--text-secondary); font-size:0.9rem; line-height:1.6"></p>
+        </div>
+        <div class="modal-footer" style="flex-wrap:wrap; gap:10px">
+          <button id="pd-cancel" class="secondary-btn">Cancel</button>
+          <button id="pd-confirm" class="primary-btn" style="background:#e04040">Permanently Delete</button>
         </div>
       </div>
     </div>

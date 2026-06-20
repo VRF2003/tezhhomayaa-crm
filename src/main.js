@@ -1,6 +1,6 @@
 import './style.css';
 import { products, getUniqueValues, loadProducts } from './data.js';
-import { openDB, db_quotes, db_buyers, db_settings, executeMigrations, exportDatabase, importDatabase } from './db.js';
+import { openDB, db_quotes, db_buyers, db_settings, executeMigrations, exportDatabase, importDatabase, db_products } from './db.js';
 import { saveQuote, getReport, deleteQuote, updateQuoteFields, archiveQuote, restoreQuote, duplicateQuote, archiveBuyer, deleteBuyer, updateBuyerFields } from './crm.js';
 import { testGoogleSheetsConnection, syncOrderToSheets } from './gsheets.js';
 
@@ -284,17 +284,21 @@ function renderSearchTable() {
   });
 
   tbodySearch.innerHTML = filtered.length === 0
-    ? `<tr><td colspan="12" class="empty-state">No products match your filters.</td></tr>`
+    ? `<tr><td colspan="13" class="empty-state">No products match your filters.</td></tr>`
     : filtered.map(p => `
       <tr>
-        <td>${p.productName}</td><td>${p.design}</td><td>${p.colour}</td>
-        <td>${p.styleCode}</td><td>${p.category}</td><td>${p.fabric}</td>
-        <td class="currency">${formatCur(p.cost)}</td>
-        <td class="currency">${formatCur(p.finalCost)}</td>
-        <td class="currency">${formatCur(p.retailPrice)}</td>
-        <td class="currency" style="color:var(--accent-gold)">${formatCur(p.wholesale50)}</td>
-        <td class="currency" style="color:var(--accent-blue)">${formatCur(p.wholesale40)}</td>
-        <td class="currency">${formatCur(p.wholesale30)}</td>
+        <td>\${p.productName}</td><td>\${p.design}</td><td>\${p.colour}</td>
+        <td>\${p.styleCode}</td><td>\${p.category}</td><td>\${p.fabric}</td>
+        <td class="currency">\${formatCur(p.cost)}</td>
+        <td class="currency">\${formatCur(p.finalCost)}</td>
+        <td class="currency">\${formatCur(p.retailPrice)}</td>
+        <td class="currency" style="color:var(--accent-gold)">\${formatCur(p.wholesale50)}</td>
+        <td class="currency" style="color:var(--accent-blue)">\${formatCur(p.wholesale40)}</td>
+        <td class="currency">\${formatCur(p.wholesale30)}</td>
+        <td class="actions-cell">
+          <button class="icon-btn edit-product-btn" data-stylecode="\${p.styleCode}" title="Edit Product">✏️</button>
+          <button class="icon-btn delete-product-btn" data-stylecode="\${p.styleCode}" title="Delete Product">🗑️</button>
+        </td>
       </tr>`).join('');
 }
 
@@ -1524,6 +1528,191 @@ function setupEventListeners() {
       }
     });
   }
+
+  // ── Product Management ─────────────────────────────────────
+  const addProductBtn = document.getElementById('add-product-btn');
+  const pmModal = document.getElementById('product-form-modal');
+  const pmSave = document.getElementById('pm-save');
+  const pdModal = document.getElementById('product-delete-modal');
+  let pmBase64Image = null;
+  let productToDelete = null;
+
+  document.getElementById('pm-image')?.addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        pmBase64Image = ev.target.result;
+        const preview = document.getElementById('pm-image-preview');
+        if (preview) {
+          preview.src = pmBase64Image;
+          preview.style.display = 'block';
+        }
+      };
+      reader.readAsDataURL(file);
+    }
+  });
+
+  const closePmModal = () => {
+    pmModal?.classList.add('hidden');
+    pmBase64Image = null;
+    document.getElementById('pm-image-preview').style.display = 'none';
+  };
+
+  document.getElementById('pm-close')?.addEventListener('click', closePmModal);
+  document.getElementById('pm-cancel')?.addEventListener('click', closePmModal);
+
+  addProductBtn?.addEventListener('click', () => {
+    // Clear form
+    document.getElementById('pm-id').value = '';
+    document.getElementById('pm-name').value = '';
+    document.getElementById('pm-category').value = '';
+    document.getElementById('pm-design').value = '';
+    document.getElementById('pm-colour').value = '';
+    document.getElementById('pm-stylecode').value = '';
+    document.getElementById('pm-fabric').value = '';
+    document.getElementById('pm-cost').value = '';
+    document.getElementById('pm-finalcost').value = '';
+    document.getElementById('pm-retail').value = '';
+    document.getElementById('pm-ws50').value = '';
+    document.getElementById('pm-ws40').value = '';
+    document.getElementById('pm-ws30').value = '';
+    document.getElementById('pm-status').value = 'Active';
+    document.getElementById('pm-image').value = '';
+    document.getElementById('pm-image-preview').style.display = 'none';
+    document.getElementById('pm-title').textContent = 'Add Product';
+    
+    document.getElementById('pm-stylecode').readOnly = false;
+    pmBase64Image = null;
+    pmModal?.classList.remove('hidden');
+  });
+
+  pmSave?.addEventListener('click', async () => {
+    const pName = document.getElementById('pm-name').value.trim();
+    const pCategory = document.getElementById('pm-category').value.trim();
+    const pDesign = document.getElementById('pm-design').value.trim();
+    const pColour = document.getElementById('pm-colour').value.trim();
+    const pStylecode = document.getElementById('pm-stylecode').value.trim();
+    
+    if (!pName || !pCategory || !pDesign || !pColour || !pStylecode) {
+      return showToast('Please fill all required fields (*).', true);
+    }
+
+    const newProd = {
+      productName: pName,
+      category: pCategory,
+      design: pDesign,
+      colour: pColour,
+      styleCode: pStylecode,
+      fabric: document.getElementById('pm-fabric').value.trim(),
+      cost: parseFloat(document.getElementById('pm-cost').value) || 0,
+      finalCost: parseFloat(document.getElementById('pm-finalcost').value) || 0,
+      retailPrice: parseFloat(document.getElementById('pm-retail').value) || 0,
+      wholesale50: parseFloat(document.getElementById('pm-ws50').value) || 0,
+      wholesale40: parseFloat(document.getElementById('pm-ws40').value) || 0,
+      wholesale30: parseFloat(document.getElementById('pm-ws30').value) || 0,
+      status: document.getElementById('pm-status').value,
+      image: pmBase64Image
+    };
+
+    const editId = document.getElementById('pm-id').value;
+    if (editId) {
+      newProd.id = parseInt(editId);
+    } else {
+      // Check for duplicate style code ONLY when adding new
+      const existing = await db_products.getByStyleCode(pStylecode);
+      if (existing && existing.length > 0) {
+        newProd.id = existing[0].id; // Overwrite if it exists
+      }
+    }
+
+    try {
+      await db_products.put(newProd);
+      showToast('✓ Product saved successfully.');
+      closePmModal();
+      await loadProducts();
+      populateDropdowns();
+      renderSearchTable();
+    } catch (err) {
+      showToast(`Error saving product: \${err.message}`, true);
+    }
+  });
+
+  const closePdModal = () => {
+    pdModal?.classList.add('hidden');
+    productToDelete = null;
+  };
+
+  document.getElementById('pd-close')?.addEventListener('click', closePdModal);
+  document.getElementById('pd-cancel')?.addEventListener('click', closePdModal);
+
+  document.getElementById('pd-confirm')?.addEventListener('click', async () => {
+    if (!productToDelete) return;
+    try {
+      await db_products.delete(productToDelete.id);
+      showToast('✓ Product deleted successfully.');
+      closePdModal();
+      await loadProducts();
+      populateDropdowns();
+      renderSearchTable();
+    } catch (err) {
+      showToast(`Error deleting product: \${err.message}`, true);
+    }
+  });
+
+  tbodySearch?.addEventListener('click', async (e) => {
+    const editBtn = e.target.closest('.edit-product-btn');
+    if (editBtn) {
+      const code = editBtn.getAttribute('data-stylecode');
+      const prod = products.find(p => p.styleCode === code);
+      if (!prod) return;
+      
+      document.getElementById('pm-title').textContent = 'Edit Product';
+      document.getElementById('pm-name').value = prod.productName || '';
+      document.getElementById('pm-category').value = prod.category || '';
+      document.getElementById('pm-design').value = prod.design || '';
+      document.getElementById('pm-colour').value = prod.colour || '';
+      document.getElementById('pm-stylecode').value = prod.styleCode || '';
+      document.getElementById('pm-stylecode').readOnly = true; // Prevent changing PK
+      document.getElementById('pm-fabric').value = prod.fabric || '';
+      document.getElementById('pm-cost').value = prod.cost || '';
+      document.getElementById('pm-finalcost').value = prod.finalCost || '';
+      document.getElementById('pm-retail').value = prod.retailPrice || '';
+      document.getElementById('pm-ws50').value = prod.wholesale50 || '';
+      document.getElementById('pm-ws40').value = prod.wholesale40 || '';
+      document.getElementById('pm-ws30').value = prod.wholesale30 || '';
+      document.getElementById('pm-status').value = prod.status || 'Active';
+      
+      if (prod.id) {
+        document.getElementById('pm-id').value = prod.id;
+      } else {
+        document.getElementById('pm-id').value = '';
+      }
+      
+      if (prod.image) {
+        pmBase64Image = prod.image;
+        document.getElementById('pm-image-preview').src = prod.image;
+        document.getElementById('pm-image-preview').style.display = 'block';
+      } else {
+        pmBase64Image = null;
+        document.getElementById('pm-image-preview').style.display = 'none';
+      }
+      
+      pmModal?.classList.remove('hidden');
+    }
+
+    const delBtn = e.target.closest('.delete-product-btn');
+    if (delBtn) {
+      const code = delBtn.getAttribute('data-stylecode');
+      const prodLocal = await db_products.getByStyleCode(code);
+      if (!prodLocal || prodLocal.length === 0) {
+        return showToast('Cannot delete CSV imported products. Only manually created products can be deleted.', true);
+      }
+      productToDelete = prodLocal[0];
+      document.getElementById('pd-msg').textContent = `Are you sure you want to permanently delete "\${productToDelete.productName}" (\${productToDelete.styleCode})?`;
+      pdModal?.classList.remove('hidden');
+    }
+  });
 }
 
 function setupSizeMatrixSync() {

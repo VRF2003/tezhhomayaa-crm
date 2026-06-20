@@ -3,7 +3,7 @@
 // ============================================================
 
 const DB_NAME = 'TezhhomayaaCRM';
-const DB_VERSION = 2;
+const DB_VERSION = 3;
 
 let db = null;
 let dbPromise = null;
@@ -41,6 +41,15 @@ export function openDB() {
       // ── settings store ───────────────────────────────────
       if (!database.objectStoreNames.contains('settings')) {
         database.createObjectStore('settings', { keyPath: 'id' });
+      }
+
+      // ── products store ───────────────────────────────────
+      if (!database.objectStoreNames.contains('products')) {
+        const pStore = database.createObjectStore('products', {
+          keyPath: 'id', autoIncrement: true
+        });
+        pStore.createIndex('styleCode', 'styleCode', { unique: true });
+        pStore.createIndex('category', 'category', { unique: false });
       }
     };
 
@@ -150,6 +159,18 @@ export const db_settings = {
   put: (settings) => put('settings', { id: 'pdf_settings', ...settings }),
 };
 
+export const db_products = {
+  add:    (p) => add('products', p),
+  put:    (p) => put('products', p),
+  getAll: ()  => getAll('products'),
+  getById:(id) => getById('products', id),
+  getByStyleCode: (code) => getByIndex('products', 'styleCode', code),
+  delete: async (id) => {
+    const store = await tx('products', 'readwrite');
+    return promisify(store.delete(id));
+  },
+};
+
 // ── Database Migration Engine ──────────────────────────────
 const CURRENT_MIGRATION_VERSION = 1;
 
@@ -200,7 +221,8 @@ export async function exportDatabase() {
   const data = {
     quotes: await db_quotes.getAll(),
     buyers: await db_buyers.getAll(),
-    settings: await db_settings.get()
+    settings: await db_settings.get(),
+    products: await db_products.getAll()
   };
   
   const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
@@ -224,6 +246,8 @@ export async function importDatabase(jsonData) {
     await promisify(quoteStore.clear());
     const buyerStore = await tx('buyers', 'readwrite');
     await promisify(buyerStore.clear());
+    const productStore = await tx('products', 'readwrite');
+    await promisify(productStore.clear());
 
     // Import Quotes
     for (const q of data.quotes) {
@@ -234,6 +258,13 @@ export async function importDatabase(jsonData) {
     // Import Buyers
     for (const b of data.buyers) {
       await db_buyers.add(b);
+    }
+    
+    // Import Products
+    if (data.products) {
+      for (const p of data.products) {
+        await db_products.add(p);
+      }
     }
     
     // Import Settings
