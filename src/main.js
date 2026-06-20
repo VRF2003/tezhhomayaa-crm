@@ -1794,8 +1794,33 @@ function resetBuilderInfo() {
 function setupPWA() {
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('/sw.js')
-      .then(r => console.log('[SW] Registered:', r.scope))
+      .then(reg => {
+        console.log('[SW] Registered:', reg.scope);
+        
+        reg.addEventListener('updatefound', () => {
+          const newWorker = reg.installing;
+          newWorker.addEventListener('statechange', () => {
+            // If the new worker is installed and there's already an active controller
+            // it means this is an update, not the very first installation.
+            if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+              showToast('New version available! Updating...', false);
+              // Tell the new worker to skip waiting and activate immediately
+              setTimeout(() => {
+                newWorker.postMessage({ type: 'SKIP_WAITING' });
+              }, 1500);
+            }
+          });
+        });
+      })
       .catch(e => console.error('[SW] Failed:', e));
+
+    let refreshing = false;
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+      if (!refreshing) {
+        refreshing = true;
+        window.location.reload();
+      }
+    });
   }
 
   // Mobile bottom nav

@@ -1,4 +1,4 @@
-const CACHE_NAME = 'tezhhomayaa-v3';
+const CACHE_NAME = 'tezhhomayaa-v4';
 
 // Assets to cache on install (app shell)
 const PRECACHE_ASSETS = [
@@ -16,8 +16,15 @@ self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
       return cache.addAll(PRECACHE_ASSETS);
-    }).then(() => self.skipWaiting())
+    })
   );
+});
+
+// Listen for update messages from main.js
+self.addEventListener('message', (event) => {
+  if (event.data && event.data.type === 'SKIP_WAITING') {
+    self.skipWaiting();
+  }
 });
 
 // Activate: clean up old caches
@@ -39,6 +46,22 @@ self.addEventListener('fetch', (event) => {
 
   // Network-first for CSV (so updates to the product list are always fresh)
   if (url.pathname.endsWith('.csv')) {
+    event.respondWith(
+      fetch(event.request)
+        .then((response) => {
+          if (response.ok) {
+            const clone = response.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
+          }
+          return response;
+        })
+        .catch(() => caches.match(event.request))
+    );
+    return;
+  }
+
+  // Network-first for HTML pages to ensure we get the latest assets from Vercel
+  if (event.request.mode === 'navigate' || url.pathname === '/' || url.pathname === '/index.html') {
     event.respondWith(
       fetch(event.request)
         .then((response) => {
