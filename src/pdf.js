@@ -147,12 +147,16 @@ export async function generateLuxuryPDF(quote, mode, settings, rates) {
 
   // Build the complete HTML Template
   const htmlContent = `
-    <div style="font-family: 'Inter', 'Helvetica Neue', Helvetica, Arial, sans-serif; color: #111; max-width: 800px; margin: 0 auto; background: #fff; padding: 40px;">
+    <div style="font-family: 'Playfair Display', serif; color: #111; max-width: 800px; margin: 0 auto; background: #fff; padding: 40px;">
+      <style>
+        @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap');
+      </style>
       
       <!-- HEADER -->
       <div style="text-align: center; margin-bottom: 50px;">
-        <h1 style="font-size: 28px; font-weight: 300; letter-spacing: 4px; text-transform: uppercase; margin: 0;">Formal Quotation</h1>
-        ${isInternal ? '<div style="margin-top:8px; font-size: 12px; color: #d32f2f; font-weight: 600; letter-spacing: 2px;">INTERNAL COSTING VIEW</div>' : ''}
+        <img src="${window.location.origin}/logo.png" alt="Tezhhomayaa Logo" style="height: 50px; object-fit: contain; margin-bottom: 10px;" />
+        <h1 style="font-size: 20px; font-weight: 400; letter-spacing: 4px; text-transform: uppercase; margin: 0; color: #555;">Formal Quotation</h1>
+        ${isInternal ? '<div style="margin-top:8px; font-size: 12px; color: #d32f2f; font-weight: 600; letter-spacing: 2px; font-family: sans-serif;">INTERNAL COSTING VIEW</div>' : ''}
       </div>
 
       <!-- INFO BLOCK -->
