@@ -287,17 +287,17 @@ function renderSearchTable() {
     ? `<tr><td colspan="13" class="empty-state">No products match your filters.</td></tr>`
     : filtered.map(p => `
       <tr>
-        <td>\${p.productName}</td><td>\${p.design}</td><td>\${p.colour}</td>
-        <td>\${p.styleCode}</td><td>\${p.category}</td><td>\${p.fabric}</td>
-        <td class="currency">\${formatCur(p.cost)}</td>
-        <td class="currency">\${formatCur(p.finalCost)}</td>
-        <td class="currency">\${formatCur(p.retailPrice)}</td>
-        <td class="currency" style="color:var(--accent-gold)">\${formatCur(p.wholesale50)}</td>
-        <td class="currency" style="color:var(--accent-blue)">\${formatCur(p.wholesale40)}</td>
-        <td class="currency">\${formatCur(p.wholesale30)}</td>
+        <td>${p.productName}</td><td>${p.design}</td><td>${p.colour}</td>
+        <td>${p.styleCode}</td><td>${p.category}</td><td>${p.fabric}</td>
+        <td class="currency">${formatCur(p.cost)}</td>
+        <td class="currency">${formatCur(p.finalCost)}</td>
+        <td class="currency">${formatCur(p.retailPrice)}</td>
+        <td class="currency" style="color:var(--accent-gold)">${formatCur(p.wholesale50)}</td>
+        <td class="currency" style="color:var(--accent-blue)">${formatCur(p.wholesale40)}</td>
+        <td class="currency">${formatCur(p.wholesale30)}</td>
         <td class="actions-cell">
-          <button class="icon-btn edit-product-btn" data-stylecode="\${p.styleCode}" title="Edit Product">✏️</button>
-          <button class="icon-btn delete-product-btn" data-stylecode="\${p.styleCode}" title="Delete Product">🗑️</button>
+          <button class="icon-btn edit-product-btn" data-stylecode="${p.styleCode}" title="Edit Product">✏️</button>
+          <button class="icon-btn delete-product-btn" data-stylecode="${p.styleCode}" title="Delete Product">🗑️</button>
         </td>
       </tr>`).join('');
 }
