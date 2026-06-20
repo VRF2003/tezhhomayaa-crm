@@ -36,6 +36,7 @@ export async function loadProducts() {
           products = results.data.map(row => {
             return {
               productName: row['Product'] || 'Unknown',
+              silhouette: row['Silhouette'] || 'Uncategorized',
               design: row['Design'] || 'N/A',
               colour: row['Colour'] || 'N/A',
               styleCode: row['Style Code'] || 'N/A',

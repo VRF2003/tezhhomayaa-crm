@@ -149,6 +149,8 @@ const viewTitleMap = {
 };
 
 function activateView(targetId) {
+  console.log(`[Navigation] actvateView called with target: ${targetId}`);
+  try {
   views.forEach(v => v.classList.remove('active'));
   const target = document.getElementById(targetId);
   if (target) target.classList.add('active');
@@ -164,10 +166,18 @@ function activateView(targetId) {
 
   // Lazy-render CRM pages on navigation
   if (targetId === 'dashboard-view') renderDashboard();
+  if (targetId === 'search-view')    console.log('[View] Rendering Product Search'); // handled automatically by initial load usually, but logging
+  if (targetId === 'builder-view')   console.log('[View] Rendering Order Builder');
+  if (targetId === 'quote-view')     console.log('[View] Rendering Buyer Quote');
   if (targetId === 'buyers-view')    renderBuyers();
   if (targetId === 'orders-view')    renderOrders();
   if (targetId === 'archived-view')  renderArchivedOrders();
   if (targetId === 'reports-view')   renderReports();
+  if (targetId === 'settings-view')  console.log('[View] Rendering Settings');
+  
+  } catch(err) {
+    console.error(`[Navigation Error] Failed during activateView('${targetId}'):`, err);
+  }
 }
 
 // ── Settings Controller ────────────────────────────────────
@@ -199,9 +209,42 @@ async function loadSettings() {
     document.getElementById('set-opt-watermark').checked = s.optWatermark !== false;
     if (s.gsheetUrl) document.getElementById('set-gsheet-url').value = s.gsheetUrl;
     document.getElementById('set-gsheet-autosync').checked = s.gsheetAutoSync !== false;
+    
+    // Silhouette MOQs
+    if (!pdfSettings.silhouetteMoqs) pdfSettings.silhouetteMoqs = {};
+    renderMoqSettings();
   } catch (err) {
     console.error("Failed to load settings", err);
   }
+}
+
+function renderMoqSettings() {
+  const container = document.getElementById('moq-list-container');
+  if (!container) return;
+  const moqs = pdfSettings.silhouetteMoqs || {};
+  
+  if (Object.keys(moqs).length === 0) {
+    container.innerHTML = '<div class="empty-state" style="padding:10px">No Silhouette MOQs defined</div>';
+    return;
+  }
+  
+  container.innerHTML = Object.entries(moqs).map(([sil, qty]) => `
+    <div style="display:flex; justify-content:space-between; align-items:center; background:rgba(255,255,255,0.03); padding:8px 12px; border-radius:var(--radius-sm); border:1px solid var(--border-color)">
+      <div><strong style="color:var(--text-primary)">${sil}</strong>: ${qty} pcs</div>
+      <button class="icon-btn delete-moq-btn" data-sil="${sil}" style="color:#e04040">✕</button>
+    </div>
+  `).join('');
+  
+  container.querySelectorAll('.delete-moq-btn').forEach(btn => {
+    btn.addEventListener('click', async (e) => {
+      const sil = e.currentTarget.getAttribute('data-sil');
+      delete pdfSettings.silhouetteMoqs[sil];
+      await db_settings.put(pdfSettings);
+      renderMoqSettings();
+      showToast(`Removed MOQ for ${sil}`);
+      if (document.getElementById('builder-view').classList.contains('active')) renderBuilder();
+    });
+  });
 }
 
 async function saveSettings() {
@@ -433,7 +476,47 @@ function updateOrderViews() {
   const totalProfit   = totalValue - totalCost;
   const overallMargin = totalValue > 0 ? (totalProfit / totalValue) * 100 : 0;
 
-  if (builderTotal)        builderTotal.textContent       = formatCur(totalValue);
+  if (builderTotal) builderTotal.textContent = formatCur(totalValue);
+    
+    // Silhouette MOQ Logic
+    const moqs = pdfSettings.silhouetteMoqs || {};
+    const hasMoqs = Object.keys(moqs).length > 0;
+    const moqContainer = document.getElementById('builder-moq-status');
+    const moqTbody = document.getElementById('builder-moq-tbody');
+    
+    if (moqContainer && moqTbody) {
+      if (!hasMoqs || orderItems.length === 0) {
+        moqContainer.style.display = 'none';
+      } else {
+        moqContainer.style.display = 'block';
+        const silTotals = {};
+        orderItems.forEach(item => {
+          const sil = item.product.silhouette || 'Uncategorized';
+          silTotals[sil] = (silTotals[sil] || 0) + item.qty;
+        });
+        
+        let moqHtml = '';
+        for (const [sil, required] of Object.entries(moqs)) {
+          const cartQty = silTotals[sil] || 0;
+          const remaining = Math.max(0, required - cartQty);
+          const achieved = cartQty >= required;
+          const statusColor = achieved ? 'var(--accent-green)' : '#e04040';
+          const statusText = achieved ? 'Achieved ✓' : 'Not Achieved ✗';
+          
+          moqHtml += `
+            <tr>
+              <td><strong>${sil}</strong></td>
+              <td>${required}</td>
+              <td style="color:${statusColor}; font-weight:bold">${cartQty}</td>
+              <td>${remaining > 0 ? remaining : 0}</td>
+              <td style="color:${statusColor}; font-weight:bold">${statusText}</td>
+            </tr>
+          `;
+        }
+        moqTbody.innerHTML = moqHtml;
+      }
+    }
+
   if (quoteItemCount)      quoteItemCount.textContent     = totalQty;
   if (quoteTotalCost)      quoteTotalCost.textContent     = formatCur(totalCost);
   if (quoteTotalSelling)   quoteTotalSelling.textContent  = formatCur(totalValue);
@@ -522,6 +605,7 @@ function updateQuoteDocInfo() {
 
 // ── CRM: Dashboard ─────────────────────────────────────────
 async function renderDashboard() {
+  console.log('[View] Rendering Dashboard');
   const r = await getReport();
   const { symbol, rate } = exchangeRates[currentCurrency];
   const fc = (n) => `${symbol}${(n * rate).toFixed(2)}`;
@@ -581,6 +665,7 @@ async function renderDashboard() {
 
 // ── CRM: Buyers ────────────────────────────────────────────
 async function renderBuyers() {
+  console.log('[View] Rendering Buyers');
   const r = await getReport();
   buyerDrawer?.classList.add('hidden');
 
@@ -659,6 +744,7 @@ async function openBuyerDrawer(name) {
 
 // ── CRM: Orders ────────────────────────────────────────────
 async function renderOrders(filterText = '') {
+  console.log('[View] Rendering Orders');
   const r = await getReport();
   orderDrawer?.classList.add('hidden');
   currentOrderDrawerQuote = null;
@@ -835,6 +921,51 @@ window.printSavedQuote = function(quote, mode) {
         </thead>
         <tbody>${tbody}</tbody>
       </table>
+
+      <!-- SILHOUETTE MOQ SUMMARY -->
+      ${Object.keys(s.silhouetteMoqs || {}).length > 0 ? `
+      <div style="margin-top:30px">
+        <h4 style="color:var(--pdf-accent); margin-bottom:10px; font-size:0.9rem">Silhouette MOQ Status</h4>
+        <table class="pdf-table" style="width:100%; max-width:600px">
+          <thead>
+            <tr>
+              <th style="text-align:left">Silhouette</th>
+              <th style="text-align:center">Required MOQ</th>
+              <th style="text-align:center">Cart Qty</th>
+              <th style="text-align:center">Remaining</th>
+              <th style="text-align:center">Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${(() => {
+              const silTotals = {};
+              quote.items.forEach(i => {
+                const sil = i.product.silhouette || 'Uncategorized';
+                silTotals[sil] = (silTotals[sil] || 0) + i.qty;
+              });
+              let moqHtml = '';
+              for (const [sil, required] of Object.entries(s.silhouetteMoqs || {})) {
+                const cartQty = silTotals[sil] || 0;
+                const remaining = Math.max(0, required - cartQty);
+                const achieved = cartQty >= required;
+                const color = achieved ? 'var(--accent-green)' : '#e04040';
+                const text = achieved ? 'Achieved ✓' : 'Not Achieved ✗';
+                moqHtml += `
+                  <tr>
+                    <td><strong>${sil}</strong></td>
+                    <td style="text-align:center">${required}</td>
+                    <td style="text-align:center; color:${color}; font-weight:bold">${cartQty}</td>
+                    <td style="text-align:center">${remaining > 0 ? remaining : 0}</td>
+                    <td style="text-align:center; color:${color}; font-weight:bold">${text}</td>
+                  </tr>
+                `;
+              }
+              return moqHtml;
+            })()}
+          </tbody>
+        </table>
+      </div>
+      ` : ''}
 
       <!-- SUMMARY -->
       <div class="pdf-summary">
@@ -1264,7 +1395,9 @@ function setupEventListeners() {
   navLinks.forEach(link => {
     link.addEventListener('click', (e) => {
       e.preventDefault();
-      activateView(e.currentTarget.getAttribute('data-target'));
+      const targetId = e.currentTarget.getAttribute('data-target');
+      console.log(`[Click] Sidebar nav-link clicked -> ${targetId}`);
+      activateView(targetId);
     });
   });
 
@@ -1317,11 +1450,36 @@ function setupEventListeners() {
     });
   }
 
+  // MOQ Management Add Button
+  const addMoqBtn = document.getElementById('add-moq-btn');
+  if (addMoqBtn) {
+    addMoqBtn.addEventListener('click', async () => {
+      const silInput = document.getElementById('new-moq-silhouette');
+      const qtyInput = document.getElementById('new-moq-qty');
+      const sil = silInput.value.trim();
+      const qty = parseInt(qtyInput.value) || 0;
+      
+      if (!sil || qty <= 0) return showToast('Please enter a valid silhouette and quantity', true);
+      
+      if (!pdfSettings.silhouetteMoqs) pdfSettings.silhouetteMoqs = {};
+      pdfSettings.silhouetteMoqs[sil] = qty;
+      await db_settings.put(pdfSettings);
+      
+      silInput.value = '';
+      qtyInput.value = '';
+      renderMoqSettings();
+      showToast(`Saved MOQ for ${sil}`);
+      if (document.getElementById('builder-view').classList.contains('active')) renderBuilder();
+    });
+  }
+
   // Navigation: mobile links
   document.querySelectorAll('.mobile-nav-link').forEach(link => {
     link.addEventListener('click', (e) => {
       e.preventDefault();
-      activateView(e.currentTarget.getAttribute('data-target'));
+      const targetId = e.currentTarget.getAttribute('data-target');
+      console.log(`[Click] Mobile nav-link clicked -> ${targetId}`);
+      activateView(targetId);
     });
   });
 
@@ -1570,6 +1728,7 @@ function setupEventListeners() {
     document.getElementById('pm-id').value = '';
     document.getElementById('pm-name').value = '';
     document.getElementById('pm-category').value = '';
+    document.getElementById('pm-silhouette').value = '';
     document.getElementById('pm-design').value = '';
     document.getElementById('pm-colour').value = '';
     document.getElementById('pm-stylecode').value = '';
@@ -1604,6 +1763,7 @@ function setupEventListeners() {
     const newProd = {
       productName: pName,
       category: pCategory,
+      silhouette: document.getElementById('pm-silhouette').value.trim() || 'Uncategorized',
       design: pDesign,
       colour: pColour,
       styleCode: pStylecode,
@@ -1673,6 +1833,7 @@ function setupEventListeners() {
       document.getElementById('pm-title').textContent = 'Edit Product';
       document.getElementById('pm-name').value = prod.productName || '';
       document.getElementById('pm-category').value = prod.category || '';
+      document.getElementById('pm-silhouette').value = prod.silhouette || '';
       document.getElementById('pm-design').value = prod.design || '';
       document.getElementById('pm-colour').value = prod.colour || '';
       document.getElementById('pm-stylecode').value = prod.styleCode || '';

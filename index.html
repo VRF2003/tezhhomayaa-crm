@@ -341,6 +341,16 @@
               <span id="builder-total" class="summary-total">$0.00</span>
             </div>
           </div>
+          
+          <div id="builder-moq-status" class="dash-panel" style="margin-top:15px; display:none;">
+            <h3 class="dash-panel-title">Silhouette MOQ Status</h3>
+            <div class="table-container">
+              <table class="data-table">
+                <thead><tr><th>Silhouette</th><th>Required MOQ</th><th>Cart Qty</th><th>Remaining Needed</th><th>Status</th></tr></thead>
+                <tbody id="builder-moq-tbody"></tbody>
+              </table>
+            </div>
+          </div>
         </section>
 
         <!-- ══ EDIT ITEM MODAL ══════════════════════════ -->
@@ -654,11 +664,24 @@
 
             <div class="dash-panel settings-panel">
               <h3 class="dash-panel-title">Commercial Terms</h3>
-              <div class="filter-group"><label>MOQ</label><input type="text" id="set-moq" placeholder="100 pieces per style"></div>
+              <div class="filter-group"><label>Global MOQ</label><input type="text" id="set-moq" placeholder="100 pieces per style"></div>
               <div class="filter-group"><label>Payment Terms</label><input type="text" id="set-payment" placeholder="50% Advance, 50% Before Shipment"></div>
               <div class="filter-group"><label>Delivery Timeline</label><input type="text" id="set-delivery" placeholder="45-60 Days"></div>
               <div class="filter-group"><label>Shipping Terms</label><input type="text" id="set-shipping" placeholder="FOB Malaysia"></div>
               <div class="filter-group"><label>Validity Period</label><input type="text" id="set-validity" placeholder="30 Days"></div>
+            </div>
+
+            <div class="dash-panel settings-panel">
+              <h3 class="dash-panel-title">MOQ Management (By Silhouette)</h3>
+              <p style="font-size:0.85rem; color:var(--text-secondary); margin-bottom:1rem">Define required MOQs per Silhouette. These will automatically apply to products in the Order Builder based on their Silhouette.</p>
+              <div id="moq-list-container" style="display:flex; flex-direction:column; gap:8px; margin-bottom:15px; max-height:200px; overflow-y:auto;">
+                <!-- Dynamically populated MOQ rows -->
+              </div>
+              <div class="filter-group" style="display:flex; flex-direction:row; gap:10px">
+                <input type="text" id="new-moq-silhouette" placeholder="Silhouette Name" style="flex:2">
+                <input type="number" id="new-moq-qty" placeholder="Qty" style="flex:1">
+                <button id="add-moq-btn" class="secondary-btn">Add</button>
+              </div>
             </div>
 
             <div class="dash-panel settings-panel">
@@ -807,6 +830,10 @@
           <div class="filter-group">
             <label>Category <span style="color:#e04040">*</span></label>
             <input type="text" id="pm-category" placeholder="E.g. Bags">
+          </div>
+          <div class="filter-group">
+            <label>Silhouette</label>
+            <input type="text" id="pm-silhouette" placeholder="E.g. A-Line (Leave empty for Uncategorized)">
           </div>
           <div class="filter-group">
             <label>Design <span style="color:#e04040">*</span></label>
