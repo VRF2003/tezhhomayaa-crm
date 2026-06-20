@@ -62,8 +62,8 @@ export async function generateLuxuryPDF(quote, mode, settings, rates) {
         <td style="padding: 12px 0;">${imgStr}</td>
         <td style="padding: 12px 0;">
           <div style="font-weight: 600; font-size: 14px; color: #111;">${prod.productName || 'Unknown Product'}</div>
-          <div style="font-size: 12px; color: #666; margin-top: 4px;">Style: ${item.styleCode}</div>
-          <div style="font-size: 12px; color: #666;">Design: ${item.design} | Colour: ${item.colour}</div>
+          <div style="font-size: 12px; color: #666; margin-top: 4px;">Style: ${prod.styleCode || 'N/A'}</div>
+          <div style="font-size: 12px; color: #666;">Design: ${prod.design || 'N/A'} | Colour: ${prod.colour || 'N/A'}</div>
           <div style="font-size: 11px; color: #888; margin-top: 4px;">Sizes: ${sizesSummary.join(' ')}</div>
         </td>
         <td style="padding: 12px 0; text-align: center;">${item.qty}</td>
