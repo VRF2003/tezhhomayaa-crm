@@ -3,6 +3,7 @@ import { products, getUniqueValues, loadProducts } from './data.js';
 import { openDB, db_quotes, db_buyers, db_settings, executeMigrations, exportDatabase, importDatabase, db_products } from './db.js';
 import { saveQuote, getReport, deleteQuote, updateQuoteFields, archiveQuote, restoreQuote, duplicateQuote, archiveBuyer, deleteBuyer, updateBuyerFields } from './crm.js';
 import { testGoogleSheetsConnection, syncOrderToSheets } from './gsheets.js';
+import { generateLuxuryPDF } from './pdf.js';
 
 // ── State ──────────────────────────────────────────────────
 let orderItems = [];
@@ -957,209 +958,15 @@ function openOrderDrawer(quote) {
   orderDrawer.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
-// ── Print Saved Quote Directly ────────────────────────────────
-window.printSavedQuote = function(quote, mode) {
-  let pc = document.getElementById('print-container');
-  if (!pc) {
-    pc = document.createElement('div');
-    pc.id = 'print-container';
-    document.body.appendChild(pc);
+// ── Download Saved Quote as PDF ──────────────────────────────
+window.printSavedQuote = async function(quote, mode) {
+  // Show a simple loading toast
+  showToast('Generating PDF...');
+  try {
+    await generateLuxuryPDF(quote, mode, pdfSettings);
+  } catch (error) {
+    showToast('Failed to generate PDF.', true);
   }
-
-  const s = pdfSettings || {};
-  const isClient = mode === 'client';
-  const themeClass = `theme-${s.theme || 'luxury-beige'}`;
-  const showImg = s.optImages !== false;
-
-  const tbody = quote.items.map(item => {
-    const sizeStr = Object.entries(item.sizes || {})
-      .filter(([_, v]) => v > 0)
-      .map(([k, v]) => `${k.toUpperCase()}: ${v}`)
-      .join('<br>');
-      
-    const profit = (item.unitPrice - item.finalCost) * item.qty;
-    const margin = item.unitPrice > 0 ? ((item.unitPrice - item.finalCost)/item.unitPrice)*100 : 0;
-
-    return `
-      <tr>
-        ${showImg ? `<td style="width:50px"><div class="pdf-prod-img"></div></td>` : ''}
-        <td><strong>${item.productName}</strong></td>
-        <td>${item.design || '—'}</td>
-        <td>${item.colour || '—'}</td>
-        ${!isClient ? `<td>${item.styleCode}</td>` : ''}
-        <td style="font-size:0.8rem; line-height:1.2">${sizeStr}</td>
-        <td style="text-align:center">${item.qty}</td>
-        ${!isClient ? `<td class="currency">${formatCur(item.finalCost)}</td>` : ''}
-        <td class="currency">${formatCur(item.unitPrice)}</td>
-        <td class="currency">${formatCur(item.unitPrice * item.qty)}</td>
-        ${!isClient ? `<td class="currency" style="color:var(--pdf-accent)">${formatCur(profit)}</td>` : ''}
-        ${!isClient ? `<td style="color:var(--pdf-accent)">${margin.toFixed(1)}%</td>` : ''}
-      </tr>
-    `;
-  }).join('');
-
-  pc.innerHTML = `
-    <div class="pdf-doc">
-      <!-- HEADER -->
-      <div class="pdf-header">
-        <div>
-          ${s.logoUrl ? `<img src="${s.logoUrl}" class="pdf-logo">` : `<h2 style="margin:0;color:var(--pdf-accent)">${s.compName || 'TEZHHOMAYAA'}</h2>`}
-          <div style="font-size:0.85rem; margin-top:5px; color:var(--pdf-text-muted)">${s.tagline || 'Bridge To Luxury'}</div>
-        </div>
-        <div class="pdf-title-block">
-          <h1>${isClient ? 'Formal Quotation' : 'Internal Commercial Report'}</h1>
-          <div style="margin-top:10px; font-size:0.9rem">
-            <div><strong>Quote #:</strong> ${quote.quoteNumber}</div>
-            <div><strong>Date:</strong> ${formatDate(quote.date)}</div>
-            ${isClient ? `<div><strong>Valid Until:</strong> ${s.validity || '30 Days'}</div>` : ''}
-          </div>
-        </div>
-      </div>
-
-      <!-- BUYER SECTION -->
-      <div class="pdf-buyer-grid">
-        <div>
-          <h4 style="margin:0 0 10px 0; color:var(--pdf-accent); text-transform:uppercase; font-size:0.8rem">Prepared For</h4>
-          <div style="font-size:1.1rem; font-weight:600">${quote.buyerName}</div>
-          <div>${quote.company || ''}</div>
-          <div>${quote.country || ''}</div>
-          ${quote.phone ? `<div>Mobile: ${quote.phone}</div>` : ''}
-          ${quote.email ? `<div>Email: ${quote.email}</div>` : ''}
-        </div>
-        ${!isClient ? `
-        <div>
-          <h4 style="margin:0 0 10px 0; color:var(--pdf-accent); text-transform:uppercase; font-size:0.8rem">Internal Status</h4>
-          <div><strong>Sales Rep:</strong> Admin</div>
-          <div><strong>Approval:</strong> ${quote.status || 'Draft'}</div>
-        </div>
-        ` : ''}
-      </div>
-
-      <!-- PRODUCT TABLE -->
-      <table class="pdf-table">
-        <thead>
-          <tr>
-            ${showImg ? '<th>Image</th>' : ''}
-            <th>Product</th>
-            <th>Design</th>
-            <th>Colour</th>
-            ${!isClient ? '<th>Style Code</th>' : ''}
-            <th>Size Matrix</th>
-            <th style="text-align:center">Qty</th>
-            ${!isClient ? '<th>Unit Cost</th>' : ''}
-            <th>Unit Price</th>
-            <th>Line Total</th>
-            ${!isClient ? '<th>Profit</th>' : ''}
-            ${!isClient ? '<th>Margin %</th>' : ''}
-          </tr>
-        </thead>
-        <tbody>${tbody}</tbody>
-      </table>
-
-      <!-- SILHOUETTE MOQ SUMMARY -->
-      ${Object.keys(s.silhouetteMoqs || {}).length > 0 ? `
-      <div style="margin-top:30px">
-        <h4 style="color:var(--pdf-accent); margin-bottom:10px; font-size:0.9rem">Silhouette MOQ Status</h4>
-        <table class="pdf-table" style="width:100%; max-width:600px">
-          <thead>
-            <tr>
-              <th style="text-align:left">Silhouette</th>
-              <th style="text-align:center">Required MOQ</th>
-              <th style="text-align:center">Cart Qty</th>
-              <th style="text-align:center">Remaining</th>
-              <th style="text-align:center">Status</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${(() => {
-              const silTotals = {};
-              quote.items.forEach(i => {
-                const sil = i.product.silhouette || 'Uncategorized';
-                silTotals[sil] = (silTotals[sil] || 0) + i.qty;
-              });
-              let moqHtml = '';
-              for (const [sil, required] of Object.entries(s.silhouetteMoqs || {})) {
-                const cartQty = silTotals[sil] || 0;
-                const remaining = Math.max(0, required - cartQty);
-                const achieved = cartQty >= required;
-                const color = achieved ? 'var(--accent-green)' : '#e04040';
-                const text = achieved ? 'Achieved ✓' : 'Not Achieved ✗';
-                moqHtml += `
-                  <tr>
-                    <td><strong>${sil}</strong></td>
-                    <td style="text-align:center">${required}</td>
-                    <td style="text-align:center; color:${color}; font-weight:bold">${cartQty}</td>
-                    <td style="text-align:center">${remaining > 0 ? remaining : 0}</td>
-                    <td style="text-align:center; color:${color}; font-weight:bold">${text}</td>
-                  </tr>
-                `;
-              }
-              return moqHtml;
-            })()}
-          </tbody>
-        </table>
-      </div>
-      ` : ''}
-
-      <!-- SUMMARY -->
-      <div class="pdf-summary">
-        <div style="display:flex; justify-content:space-between; width:300px">
-          <span>Total Quantity:</span>
-          <span style="font-weight:600">${quote.items.reduce((sum,i)=>sum+i.qty,0)}</span>
-        </div>
-        ${!isClient ? `
-        <div style="display:flex; justify-content:space-between; width:300px; margin-top:10px">
-          <span>Total Cost:</span>
-          <span style="font-weight:600" class="currency">${formatCur(quote.totalCost)}</span>
-        </div>
-        ` : ''}
-        <div style="display:flex; justify-content:space-between; width:300px; margin-top:10px; font-size:1.3rem; color:var(--pdf-accent)">
-          <span>Grand Total:</span>
-          <span style="font-weight:700" class="currency">${formatCur(quote.totalValue)}</span>
-        </div>
-        ${!isClient ? `
-        <div style="display:flex; justify-content:space-between; width:300px; margin-top:10px; color:var(--pdf-accent)">
-          <span>Total Profit:</span>
-          <span style="font-weight:600" class="currency">${formatCur(quote.totalProfit)}</span>
-        </div>
-        ` : ''}
-      </div>
-
-      <!-- FOOTER -->
-      <div class="pdf-footer">
-        ${isClient ? `
-        <div>
-          <h4 style="margin:0 0 10px 0; color:var(--pdf-accent); text-transform:uppercase; font-size:0.8rem">Commercial Terms</h4>
-          <div style="margin-bottom:4px"><strong>MOQ:</strong> ${s.moq || '100 pieces per style'}</div>
-          <div style="margin-bottom:4px"><strong>Payment:</strong> ${s.payment || '50% Advance, 50% Before Shipment'}</div>
-          <div style="margin-bottom:4px"><strong>Delivery:</strong> ${s.delivery || '45-60 Days'}</div>
-          <div style="margin-bottom:4px"><strong>Shipping:</strong> ${s.shipping || 'FOB'}</div>
-        </div>
-        ` : `
-        <div>
-          <h4 style="margin:0 0 10px 0; color:var(--pdf-accent); text-transform:uppercase; font-size:0.8rem">Internal Notes</h4>
-          <div>This is an internal commercial document. Not for distribution.</div>
-        </div>
-        `}
-        <div style="text-align:right">
-          <div style="font-weight:600; margin-bottom:10px; color:var(--pdf-text)">${s.compName || 'Tezhhomayaa'}</div>
-          ${s.website ? `<div>${s.website}</div>` : ''}
-          ${s.email ? `<div>${s.email}</div>` : ''}
-          ${s.phone ? `<div>${s.phone}</div>` : ''}
-          ${s.address ? `<div style="margin-top:10px; white-space:pre-line">${s.address}</div>` : ''}
-          <div style="margin-top:20px; font-weight:600; font-style:italic">Thank you for choosing ${s.compName || 'Tezhhomayaa'}</div>
-        </div>
-      </div>
-    </div>
-  `;
-
-  document.body.className = `print-mode-direct ${themeClass} ${isClient ? 'print-client' : 'print-internal'}`;
-
-  window.print();
-
-  setTimeout(() => {
-    document.body.className = '';
-  }, 500);
 };
 
 // ── Load Into Builder from Order Drawer ─────────────────────
@@ -1702,18 +1509,37 @@ function setupEventListeners() {
   quoteBuyerType?.addEventListener('change', updateQuoteDocInfo);
   saveQuoteBtn?.addEventListener('click', handleSaveQuote);
   
+  const buildCurrentQuote = () => {
+    return {
+      buyerName: quoteName?.value.trim() || 'Draft Buyer',
+      company: quoteCompany?.value.trim() || '',
+      country: quoteCountry?.value.trim() || '',
+      mobile: quoteMobile?.value.trim() || '',
+      email: quoteEmail?.value.trim() || '',
+      id: 'DRAFT',
+      status: 'Draft',
+      items: orderItems,
+    };
+  };
+
   if (printClientBtn) {
-    printClientBtn.addEventListener('click', () => {
-      document.body.classList.add('print-client');
-      window.print();
-      setTimeout(() => document.body.classList.remove('print-client'), 500);
+    printClientBtn.addEventListener('click', async () => {
+      showToast('Generating Client PDF...');
+      try {
+        await generateLuxuryPDF(buildCurrentQuote(), 'client', pdfSettings);
+      } catch (e) {
+        showToast('Failed to generate PDF.', true);
+      }
     });
   }
   if (printInternalBtn) {
-    printInternalBtn.addEventListener('click', () => {
-      document.body.classList.add('print-internal');
-      window.print();
-      setTimeout(() => document.body.classList.remove('print-internal'), 500);
+    printInternalBtn.addEventListener('click', async () => {
+      showToast('Generating Internal PDF...');
+      try {
+        await generateLuxuryPDF(buildCurrentQuote(), 'internal', pdfSettings);
+      } catch (e) {
+        showToast('Failed to generate PDF.', true);
+      }
     });
   }
 
