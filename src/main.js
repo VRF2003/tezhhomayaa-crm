@@ -455,9 +455,9 @@ async function handleSaveQuote() {
   const buyerType = quoteBuyerType?.value || '';
   const status    = quoteStatus?.value || 'Draft';
 
-  if (!buyerName || !company || !country || !mobile || !email) { showToast('Please complete all required buyer fields.', true); return; }
-  const emailRegex = /^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/;
-  if (!emailRegex.test(email)) { showToast('Please enter a valid email address.', true); return; }
+  if (!buyerName || !company || !country || !mobile) { showToast('Please complete all required buyer fields.', true); return; }
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (email && !emailRegex.test(email)) { showToast('Please enter a valid email address.', true); return; }
   if (orderItems.length === 0) { showToast('Add at least one product to the order.', true); return; }
 
   const totalCost  = orderItems.reduce((s, i) => s + i.product.finalCost * i.qty, 0);
@@ -502,17 +502,20 @@ function updateQuoteDocInfo() {
   const ctry = quoteCountry?.value.trim() || '';
   const mob  = quoteMobile?.value.trim() || '';
   const eml  = quoteEmail?.value.trim() || '';
+  const wa   = quoteWhatsapp?.value.trim() || '';
   
   let html = name ? `<strong>${name}</strong><br>` : '';
   if (comp) html += `${comp}<br>`;
   if (ctry) html += `${ctry}<br>`;
   if (mob) html += `Mobile: ${mob}<br>`;
   if (eml) html += `Email: ${eml}<br>`;
+  if (wa)  html += `WhatsApp: ${wa}<br>`;
   
   docBuyerInfo.innerHTML = html || 'Please enter buyer details.';
 
   if (saveQuoteBtn) {
-    const isValid = name && comp && ctry && mob && eml && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(eml);
+    const isEmailValid = !eml || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(eml);
+    const isValid = name && comp && ctry && mob && isEmailValid;
     saveQuoteBtn.disabled = !isValid;
   }
 }
