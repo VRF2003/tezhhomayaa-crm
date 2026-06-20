@@ -223,6 +223,13 @@ function renderMoqSettings() {
   if (!container) return;
   const moqs = pdfSettings.silhouetteMoqs || {};
   
+  const silSelect = document.getElementById('new-moq-silhouette');
+  if (silSelect) {
+    const uniqueSils = getUniqueValues('silhouette');
+    silSelect.innerHTML = '<option value="">Select Silhouette...</option>' + 
+      uniqueSils.map(sil => `<option value="${sil}">${sil}</option>`).join('');
+  }
+
   if (Object.keys(moqs).length === 0) {
     container.innerHTML = '<div class="empty-state" style="padding:10px">No Silhouette MOQs defined</div>';
     return;
@@ -525,6 +532,7 @@ function updateOrderViews() {
   if (quoteGrandTotal)     quoteGrandTotal.textContent    = formatCur(totalValue);
 
   updateNavBadge();
+  updateLiveMoqStatus();
 }
 
 // ── Save Quote ─────────────────────────────────────────────
@@ -542,6 +550,28 @@ async function handleSaveQuote() {
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   if (email && !emailRegex.test(email)) { showToast('Please enter a valid email address.', true); return; }
   if (orderItems.length === 0) { showToast('Add at least one product to the order.', true); return; }
+
+  // ── MOQ Validation ──
+  const moqs = pdfSettings?.silhouetteMoqs || {};
+  const silTotals = {};
+  orderItems.forEach(item => {
+    const sil = item.product.silhouette || 'Uncategorized';
+    silTotals[sil] = (silTotals[sil] || 0) + item.qty;
+  });
+
+  const failedSils = [];
+  for (const [sil, required] of Object.entries(moqs)) {
+    const cartQty = silTotals[sil] || 0;
+    if (cartQty > 0 && cartQty < required) { // Only check MOQ if they ordered at least 1 of that silhouette
+      failedSils.push(`${sil}: ${cartQty} / ${required} (Need ${required - cartQty} more)`);
+    }
+  }
+
+  if (failedSils.length > 0) {
+    showToast(`Cannot save quote. MOQ not met for:\n${failedSils.join('\n')}`, true);
+    return;
+  }
+  // ────────────────────
 
   const totalCost  = orderItems.reduce((s, i) => s + i.product.finalCost * i.qty, 0);
   const totalValue = orderItems.reduce((s, i) => s + i.unitPrice * i.qty, 0);
@@ -1887,9 +1917,13 @@ function setupSizeMatrixSync() {
         const val = builderQtyXS.value;
         [builderQtyS, builderQtyM, builderQtyL, builderQtyXL, builderQty2XL].forEach(el => el && (el.value = val));
       }
+      updateLiveMoqStatus();
     });
     [builderQtyS, builderQtyM, builderQtyL, builderQtyXL, builderQty2XL].forEach(el => {
-      el?.addEventListener('input', () => builderSameQty.checked = false);
+      el?.addEventListener('input', () => {
+        builderSameQty.checked = false;
+        updateLiveMoqStatus();
+      });
     });
   }
   // Edit Modal Sync
@@ -1940,6 +1974,66 @@ function updateCostingPanel() {
   [builderQtyXS, builderQtyS, builderQtyM, builderQtyL, builderQtyXL, builderQty2XL, builderSameQty]
     .forEach(el => { if (el) el.disabled = false; });
   if (builderAddBtn) builderAddBtn.disabled = false;
+  updateLiveMoqStatus();
+}
+
+function updateLiveMoqStatus() {
+  const panel = document.getElementById('live-moq-panel');
+  if (!panel) return;
+  
+  const pVal = builderCatProduct?.value;
+  const dVal = builderCatDesign?.value;
+  const cVal = builderCatColour?.value;
+  
+  if (!pVal || !dVal || !cVal) {
+    panel.style.display = 'none';
+    return;
+  }
+  
+  const product = products.find(p => p.productName === pVal && p.design === dVal && p.colour === cVal);
+  if (!product) {
+    panel.style.display = 'none';
+    return;
+  }
+  
+  const sil = product.silhouette || 'Uncategorized';
+  const moqs = pdfSettings?.silhouetteMoqs || {};
+  const requiredMoq = moqs[sil];
+  
+  if (!requiredMoq) {
+    panel.style.display = 'none';
+    return;
+  }
+  
+  // Calculate qty in cart for this silhouette
+  let cartQty = 0;
+  orderItems.forEach(item => {
+    if ((item.product.silhouette || 'Uncategorized') === sil) {
+      cartQty += item.qty;
+    }
+  });
+  
+  // Calculate qty currently inputted in size matrix
+  const inputQty = [builderQtyXS, builderQtyS, builderQtyM, builderQtyL, builderQtyXL, builderQty2XL]
+    .reduce((sum, el) => sum + (parseInt(el?.value) || 0), 0);
+    
+  const totalQty = cartQty + inputQty;
+  const remaining = Math.max(0, requiredMoq - totalQty);
+  const achieved = totalQty >= requiredMoq;
+  
+  const statusColor = achieved ? 'var(--accent-green)' : '#e04040';
+  const statusText = achieved ? 'MOQ Achieved ✓' : 'MOQ Not Met ✗';
+  
+  panel.innerHTML = `
+    <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
+      <div><span style="color:var(--text-secondary); font-size:0.8rem">Silhouette</span><br><strong>${sil}</strong></div>
+      <div><span style="color:var(--text-secondary); font-size:0.8rem">Required MOQ</span><br><strong>${requiredMoq}</strong></div>
+      <div><span style="color:var(--text-secondary); font-size:0.8rem">Current Qty</span><br><strong style="color:${statusColor}">${totalQty}</strong></div>
+      <div><span style="color:var(--text-secondary); font-size:0.8rem">Remaining</span><br><strong>${remaining > 0 ? remaining : 0}</strong></div>
+      <div><span style="color:var(--text-secondary); font-size:0.8rem">Status</span><br><strong style="color:${statusColor}">${statusText}</strong></div>
+    </div>
+  `;
+  panel.style.display = 'block';
 }
 
 function resetBuilderInfo() {

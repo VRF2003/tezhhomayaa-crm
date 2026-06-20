@@ -356,7 +356,7 @@ select:disabled, input:disabled { opacity: 0.35; cursor: not-allowed; }
   font-family: var(--font-body); box-shadow: 0 8px 32px rgba(0,0,0,0.6);
   transform: translateY(-10px); opacity: 0;
   transition: opacity 0.3s ease, transform 0.3s ease;
-  pointer-events: none; max-width: 340px;
+  pointer-events: none; max-width: 340px; white-space: pre-wrap;
 }
 .toast.show { opacity: 1; transform: translateY(0); }
 .toast.toast--error { background: #2e1a1a; border-color: #e04040; }
