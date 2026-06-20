@@ -489,9 +489,9 @@ function updateOrderViews() {
     const moqs = pdfSettings.silhouetteMoqs || {};
     const hasMoqs = Object.keys(moqs).length > 0;
     const moqContainer = document.getElementById('builder-moq-status');
-    const moqTbody = document.getElementById('builder-moq-tbody');
+    const moqCardsGrid = document.getElementById('builder-moq-cards');
     
-    if (moqContainer && moqTbody) {
+    if (moqContainer && moqCardsGrid) {
       if (!hasMoqs || orderItems.length === 0) {
         moqContainer.style.display = 'none';
       } else {
@@ -505,22 +505,42 @@ function updateOrderViews() {
         let moqHtml = '';
         for (const [sil, required] of Object.entries(moqs)) {
           const cartQty = silTotals[sil] || 0;
+          if (cartQty === 0) continue; // Only show progress cards for silhouettes actually in the cart
+          
           const remaining = Math.max(0, required - cartQty);
-          const achieved = cartQty >= required;
-          const statusColor = achieved ? 'var(--accent-green)' : '#e04040';
-          const statusText = achieved ? 'Achieved ✓' : 'Not Achieved ✗';
+          const { pct, color } = getMoqProgress(cartQty, required);
+          const isComplete = pct === 100;
           
           moqHtml += `
-            <tr>
-              <td><strong>${sil}</strong></td>
-              <td>${required}</td>
-              <td style="color:${statusColor}; font-weight:bold">${cartQty}</td>
-              <td>${remaining > 0 ? remaining : 0}</td>
-              <td style="color:${statusColor}; font-weight:bold">${statusText}</td>
-            </tr>
+            <div class="moq-progress-container">
+              <div class="moq-progress-header">
+                <div class="moq-progress-title">${sil}</div>
+                <div class="moq-progress-stats" style="color: ${color}">
+                  <strong>${cartQty}</strong> / ${required} (${pct}%)
+                </div>
+              </div>
+              <div class="moq-progress-bg">
+                <div class="moq-progress-fill" style="width: ${pct}%; background-color: ${color}"></div>
+              </div>
+              ${isComplete ? `
+                <div class="moq-benefits">
+                  <strong>✓ MOQ Achieved! Benefits Unlocked:</strong>
+                  <ul>
+                    <li>Wholesale pricing secured</li>
+                    <li>Priority production scheduling</li>
+                    <li>Guaranteed factory confirmation</li>
+                  </ul>
+                </div>
+              ` : `
+                <div class="moq-upsell">
+                  <div class="moq-upsell-title">Almost there!</div>
+                  <div style="color: var(--text-secondary)">Add <strong>${remaining}</strong> more items to unlock wholesale pricing and priority dispatch.</div>
+                </div>
+              `}
+            </div>
           `;
         }
-        moqTbody.innerHTML = moqHtml;
+        moqCardsGrid.innerHTML = moqHtml;
       }
     }
 
@@ -1977,6 +1997,15 @@ function updateCostingPanel() {
   updateLiveMoqStatus();
 }
 
+function getMoqProgress(qty, required) {
+  if (required <= 0) return { pct: 100, color: 'var(--accent-green)' };
+  const pct = Math.min(100, Math.round((qty / required) * 100)) || 0;
+  let color = 'var(--accent-green)';
+  if (pct < 60) color = '#e04040';
+  else if (pct < 100) color = '#e0a800';
+  return { pct, color };
+}
+
 function updateLiveMoqStatus() {
   const panel = document.getElementById('live-moq-panel');
   if (!panel) return;
@@ -2019,18 +2048,61 @@ function updateLiveMoqStatus() {
     
   const totalQty = cartQty + inputQty;
   const remaining = Math.max(0, requiredMoq - totalQty);
-  const achieved = totalQty >= requiredMoq;
   
-  const statusColor = achieved ? 'var(--accent-green)' : '#e04040';
-  const statusText = achieved ? 'MOQ Achieved ✓' : 'MOQ Not Met ✗';
+  const { pct, color } = getMoqProgress(totalQty, requiredMoq);
+  const isComplete = pct === 100;
+
+  let upsellHtml = '';
+  if (!isComplete) {
+    // Find up to 3 OTHER products from the same silhouette
+    const upsells = products
+      .filter(p => p.silhouette === sil && p.productName !== pVal)
+      .reduce((unique, p) => {
+        if (!unique.some(u => u.productName === p.productName)) {
+          unique.push(p);
+        }
+        return unique;
+      }, [])
+      .slice(0, 3);
+      
+    let upsellItemsHtml = upsells.map(u => `<div class="moq-upsell-item">${u.productName}</div>`).join('');
+    if (upsellItemsHtml) {
+      upsellHtml = `
+        <div class="moq-upsell" style="margin-top:10px;">
+          <div class="moq-upsell-title">Smart Upsell</div>
+          <div style="color:var(--text-secondary); margin-bottom:5px;">Consider adding these to hit your MOQ:</div>
+          <div class="moq-upsell-items">${upsellItemsHtml}</div>
+        </div>
+      `;
+    }
+  }
   
   panel.innerHTML = `
-    <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
-      <div><span style="color:var(--text-secondary); font-size:0.8rem">Silhouette</span><br><strong>${sil}</strong></div>
-      <div><span style="color:var(--text-secondary); font-size:0.8rem">Required MOQ</span><br><strong>${requiredMoq}</strong></div>
-      <div><span style="color:var(--text-secondary); font-size:0.8rem">Current Qty</span><br><strong style="color:${statusColor}">${totalQty}</strong></div>
-      <div><span style="color:var(--text-secondary); font-size:0.8rem">Remaining</span><br><strong>${remaining > 0 ? remaining : 0}</strong></div>
-      <div><span style="color:var(--text-secondary); font-size:0.8rem">Status</span><br><strong style="color:${statusColor}">${statusText}</strong></div>
+    <div class="moq-progress-container" style="margin-bottom:0; background:var(--bg-dark)">
+      <div class="moq-progress-header">
+        <div class="moq-progress-title">Live MOQ: ${sil}</div>
+        <div class="moq-progress-stats" style="color: ${color}">
+          <strong>${totalQty}</strong> / ${requiredMoq} (${pct}%)
+        </div>
+      </div>
+      <div class="moq-progress-bg">
+        <div class="moq-progress-fill" style="width: ${pct}%; background-color: ${color}"></div>
+      </div>
+      ${isComplete ? `
+        <div class="moq-benefits">
+          <strong>✓ MOQ Achieved! Benefits Unlocked:</strong>
+          <ul>
+            <li>Wholesale pricing secured</li>
+            <li>Priority production scheduling</li>
+            <li>Guaranteed factory confirmation</li>
+          </ul>
+        </div>
+      ` : `
+        <div style="color: var(--text-secondary); font-size:0.85rem; margin-top:5px;">
+          Add <strong>${remaining}</strong> more items to unlock wholesale pricing and priority dispatch.
+        </div>
+        ${upsellHtml}
+      `}
     </div>
   `;
   panel.style.display = 'block';

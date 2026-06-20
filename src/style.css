@@ -707,3 +707,84 @@ body.theme-middle-east .pdf-doc {
   --pdf-panel-bg: rgba(17,87,64,0.05); --pdf-border: #d0d8d5;
   --pdf-font: 'Cinzel', serif; --pdf-header-text: #fff;
 }
+
+/* ═══ MOQ PROGRESS WIDGETS ══════════════════════════════════ */
+.moq-progress-container {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 15px;
+  margin-bottom: 15px;
+}
+.moq-progress-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+.moq-progress-title {
+  font-weight: 600;
+  color: var(--text-primary);
+  font-family: var(--font-heading);
+}
+.moq-progress-stats {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+}
+.moq-progress-bg {
+  height: 8px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+  overflow: hidden;
+  margin-bottom: 10px;
+}
+.moq-progress-fill {
+  height: 100%;
+  border-radius: 4px;
+  transition: width 0.4s ease, background-color 0.4s ease;
+}
+.moq-benefits {
+  background: rgba(46, 125, 50, 0.1);
+  border-left: 3px solid var(--accent-green);
+  padding: 10px;
+  border-radius: 4px;
+  margin-top: 10px;
+  font-size: 0.85rem;
+  color: var(--text-primary);
+}
+.moq-benefits ul {
+  margin: 5px 0 0 20px;
+  padding: 0;
+  color: var(--text-secondary);
+}
+.moq-upsell {
+  background: rgba(255, 193, 7, 0.05);
+  border: 1px solid rgba(255, 193, 7, 0.2);
+  padding: 10px;
+  border-radius: 4px;
+  margin-top: 10px;
+  font-size: 0.85rem;
+}
+.moq-upsell-title {
+  color: #ffc107;
+  font-weight: 500;
+  margin-bottom: 5px;
+}
+.moq-upsell-items {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.moq-upsell-item {
+  background: var(--bg-dark);
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  border: 1px solid var(--border-color);
+}
+.moq-cards-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 15px;
+  margin-top: 15px;
+}
