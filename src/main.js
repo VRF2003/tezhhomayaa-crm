@@ -204,6 +204,7 @@ async function loadSettings() {
     document.getElementById('set-opt-images').checked = s.optImages !== false;
     document.getElementById('set-opt-qr').checked = s.optQr !== false;
     document.getElementById('set-opt-watermark').checked = s.optWatermark !== false;
+    document.getElementById('set-opt-hide-margin').checked = s.optHideMargin === true;
     if (s.gsheetUrl) document.getElementById('set-gsheet-url').value = s.gsheetUrl;
     document.getElementById('set-gsheet-autosync').checked = s.gsheetAutoSync !== false;
     
@@ -269,6 +270,7 @@ async function saveSettings() {
     s.optImages = document.getElementById('set-opt-images').checked;
     s.optQr = document.getElementById('set-opt-qr').checked;
     s.optWatermark = document.getElementById('set-opt-watermark').checked;
+    s.optHideMargin = document.getElementById('set-opt-hide-margin').checked;
     s.gsheetUrl = document.getElementById('set-gsheet-url').value;
     s.gsheetAutoSync = document.getElementById('set-gsheet-autosync').checked;
 
@@ -443,8 +445,8 @@ function updateOrderViews() {
         <td class="size-breakdown">${formatSizeBreakdown(item.sizes)}</td>
         <td>${item.qty}</td>
         <td class="currency">${formatCur(lineTotal)}</td>
-        <td class="currency internal-col" style="color:var(--accent-green)">${formatCur(profit)}</td>
-        <td class="internal-col" style="color:var(--accent-green)">${margin.toFixed(1)}%</td>
+        <td class="currency internal-col" style="color:var(--accent-green)">${!pdfSettings?.optHideMargin ? formatCur(profit) : '—'}</td>
+        <td class="internal-col" style="color:var(--accent-green)">${!pdfSettings?.optHideMargin ? margin.toFixed(1) + '%' : '—'}</td>
         <td class="actions-col internal-col">
           <div class="action-btn-group">
             <button class="action-btn action-btn--edit"  data-action="edit"  data-idx="${i}" title="Edit">✏️</button>
@@ -479,8 +481,8 @@ function updateOrderViews() {
         <td class="size-breakdown">${formatSizeBreakdown(item.sizes)}</td>
         <td>${item.qty}</td>
         <td class="currency">${formatCur(lineTotal)}</td>
-        <td class="currency internal-col" style="color:var(--accent-green)">${formatCur(lineProfit)}</td>
-        <td class="internal-col" style="color:var(--accent-green)">${lineMargin.toFixed(1)}%</td>
+        <td class="currency internal-col" style="color:var(--accent-green)">${!pdfSettings?.optHideMargin ? formatCur(lineProfit) : '—'}</td>
+        <td class="internal-col" style="color:var(--accent-green)">${!pdfSettings?.optHideMargin ? lineMargin.toFixed(1) + '%' : '—'}</td>
       </tr>`;
     }).join('');
   }
@@ -609,8 +611,8 @@ function updateOrderViews() {
   if (quoteItemCount)      quoteItemCount.textContent     = totalQty;
   if (quoteTotalCost)      quoteTotalCost.textContent     = formatCur(totalCost);
   if (quoteTotalSelling)   quoteTotalSelling.textContent  = formatCur(totalValue);
-  if (quoteTotalProfit)    quoteTotalProfit.textContent   = formatCur(totalProfit);
-  if (quoteOverallMargin)  quoteOverallMargin.textContent = `${overallMargin.toFixed(2)}%`;
+  if (quoteTotalProfit)    quoteTotalProfit.textContent   = !pdfSettings?.optHideMargin ? formatCur(totalProfit) : '—';
+  if (quoteOverallMargin)  quoteOverallMargin.textContent = !pdfSettings?.optHideMargin ? `${overallMargin.toFixed(2)}%` : '—';
   if (quoteGrandTotal)     quoteGrandTotal.textContent    = formatCur(totalValue);
 
   updateNavBadge();
@@ -1913,8 +1915,8 @@ function updateCostingPanel() {
   if (infoSelectedWs) infoSelectedWs.textContent = formatCur(wsPrice);
   const profit = wsPrice - product.finalCost;
   const margin = wsPrice > 0 ? (profit / wsPrice) * 100 : 0;
-  if (infoProfit) infoProfit.textContent = formatCur(profit);
-  if (infoMargin) infoMargin.textContent = margin.toFixed(2) + '%';
+  if (infoProfit) infoProfit.textContent = !pdfSettings?.optHideMargin ? formatCur(profit) : '—';
+  if (infoMargin) infoMargin.textContent = !pdfSettings?.optHideMargin ? margin.toFixed(2) + '%' : '—';
   if (builderTier) builderTier.disabled = false;
   [builderQtyXS, builderQtyS, builderQtyM, builderQtyL, builderQtyXL, builderQty2XL, builderSameQty]
     .forEach(el => { if (el) el.disabled = false; });
