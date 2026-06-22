@@ -14,7 +14,7 @@ function generateQuoteNumber() {
 }
 
 // ── Save a Quote + upsert Buyer ──────────────────────────
-export async function saveQuote({ buyerName, company, country, currency, items, totalCost, totalValue, totalProfit, marginPct, mobile, email, whatsapp, buyerType, status }) {
+export async function saveQuote({ buyerName, company, country, currency, items, totalCost, totalValue, totalProfit, marginPct, mobile, email, whatsapp, buyerType, status, paymentTerms, overrideDelivery }) {
   if (!buyerName || items.length === 0) {
     throw new Error('Buyer name and at least one item are required.');
   }
@@ -26,6 +26,7 @@ export async function saveQuote({ buyerName, company, country, currency, items, 
   const quoteRecord = {
     quoteNumber, date,
     buyerName, company, country, currency, phone: mobile, email, whatsapp, buyerType, status,
+    paymentTerms, overrideDelivery,
     items, totalCost, totalValue, totalProfit, marginPct
   };
   const quoteId = await db_quotes.add(quoteRecord);
@@ -40,6 +41,7 @@ export async function saveQuote({ buyerName, company, country, currency, items, 
     buyer.email       = email || buyer.email;
     buyer.whatsapp    = whatsapp || buyer.whatsapp;
     buyer.buyerType   = buyerType || buyer.buyerType;
+    if (paymentTerms) buyer.paymentTerms = paymentTerms;
     buyer.lastSeen    = date;
     buyer.totalQuotes += 1;
     buyer.totalRevenue += totalValue;
@@ -48,6 +50,7 @@ export async function saveQuote({ buyerName, company, country, currency, items, 
   } else {
     await db_buyers.add({
       name: buyerName, company, country, phone: mobile, email, whatsapp, buyerType,
+      paymentTerms,
       firstSeen: date, lastSeen: date,
       totalQuotes: 1,
       totalRevenue: totalValue,

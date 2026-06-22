@@ -4,7 +4,7 @@ import { openDB, db_quotes, db_buyers, db_settings, executeMigrations, exportDat
 import { saveQuote, getReport, deleteQuote, updateQuoteFields, archiveQuote, restoreQuote, duplicateQuote, archiveBuyer, deleteBuyer, updateBuyerFields } from './crm.js';
 import { testGoogleSheetsConnection, syncOrderToSheets } from './gsheets.js';
 import { generateLuxuryPDF } from './pdf.js';
-import { toNumber, calcLineTotal, calcSizeTotal, formatCurrency } from './utils/calc.js';
+import { toNumber, calcLineTotal, calcSizeTotal, formatCurrency, calcDeliveryTimeline } from './utils/calc.js';
 
 // ── State ──────────────────────────────────────────────────
 export let orderItems = [];
@@ -208,8 +208,11 @@ async function loadSettings() {
     if (s.gsheetUrl) document.getElementById('set-gsheet-url').value = s.gsheetUrl;
     document.getElementById('set-gsheet-autosync').checked = s.gsheetAutoSync !== false;
     
-    // Silhouette MOQs
+    if (s.deliveryBuffer != null) document.getElementById('set-delivery-buffer').value = s.deliveryBuffer;
+    
+    // Silhouette MOQs & Lead Times
     if (!pdfSettings.silhouetteMoqs) pdfSettings.silhouetteMoqs = {};
+    if (!pdfSettings.silhouetteLeadTimes) pdfSettings.silhouetteLeadTimes = {};
     renderMoqSettings();
   } catch (err) {
     console.error("Failed to load settings", err);
@@ -220,6 +223,7 @@ function renderMoqSettings() {
   const container = document.getElementById('moq-list-container');
   if (!container) return;
   const moqs = pdfSettings.silhouetteMoqs || {};
+  const leadTimes = pdfSettings.silhouetteLeadTimes || {};
   
   const silSelect = document.getElementById('new-moq-silhouette');
   if (silSelect) {
@@ -228,25 +232,34 @@ function renderMoqSettings() {
       uniqueSils.map(sil => `<option value="${sil}">${sil}</option>`).join('');
   }
 
-  if (Object.keys(moqs).length === 0) {
-    container.innerHTML = '<div class="empty-state" style="padding:10px">No Silhouette MOQs defined</div>';
+  const allSils = new Set([...Object.keys(moqs), ...Object.keys(leadTimes)]);
+  
+  if (allSils.size === 0) {
+    container.innerHTML = '<div class="empty-state" style="padding:10px">No Silhouette Rules defined</div>';
     return;
   }
   
-  container.innerHTML = Object.entries(moqs).map(([sil, qty]) => `
+  container.innerHTML = Array.from(allSils).map(sil => {
+    const q = moqs[sil] ? `${moqs[sil]} pcs` : 'N/A';
+    const l = leadTimes[sil] ? `${leadTimes[sil]} days` : 'N/A';
+    return `
     <div style="display:flex; justify-content:space-between; align-items:center; background:rgba(255,255,255,0.03); padding:8px 12px; border-radius:var(--radius-sm); border:1px solid var(--border-color)">
-      <div><strong style="color:var(--text-primary)">${sil}</strong>: ${qty} pcs</div>
+      <div>
+        <strong style="color:var(--text-primary)">${sil}</strong>: MOQ: ${q} | Lead Time: ${l}
+      </div>
       <button class="icon-btn delete-moq-btn" data-sil="${sil}" style="color:#e04040">✕</button>
     </div>
-  `).join('');
+    `;
+  }).join('');
   
   container.querySelectorAll('.delete-moq-btn').forEach(btn => {
     btn.addEventListener('click', async (e) => {
       const sil = e.currentTarget.getAttribute('data-sil');
       delete pdfSettings.silhouetteMoqs[sil];
+      delete pdfSettings.silhouetteLeadTimes[sil];
       await db_settings.put(pdfSettings);
       renderMoqSettings();
-      showToast(`Removed MOQ for ${sil}`);
+      showToast(`Removed rules for ${sil}`);
       if (document.getElementById('builder-view').classList.contains('active')) renderBuilder();
     });
   });
@@ -265,6 +278,7 @@ async function saveSettings() {
     s.moq = document.getElementById('set-moq').value;
     s.payment = document.getElementById('set-payment').value;
     s.delivery = document.getElementById('set-delivery').value;
+    s.deliveryBuffer = parseInt(document.getElementById('set-delivery-buffer').value) || 0;
     s.shipping = document.getElementById('set-shipping').value;
     s.validity = document.getElementById('set-validity').value;
     s.optImages = document.getElementById('set-opt-images').checked;
@@ -610,6 +624,10 @@ function updateOrderViews() {
 
   if (quoteItemCount)      quoteItemCount.textContent     = totalQty;
   if (quoteTotalCost)      quoteTotalCost.textContent     = formatCur(totalCost);
+  
+  const calcDelivery = calcDeliveryTimeline(orderItems, pdfSettings);
+  const quoteCalcDel = document.getElementById('quote-calc-delivery');
+  if (quoteCalcDel) quoteCalcDel.textContent = calcDelivery;
   if (quoteTotalSelling)   quoteTotalSelling.textContent  = formatCur(totalValue);
   if (quoteTotalProfit)    quoteTotalProfit.textContent   = !pdfSettings?.optHideMargin ? formatCur(totalProfit) : '—';
   if (quoteOverallMargin)  quoteOverallMargin.textContent = !pdfSettings?.optHideMargin ? `${overallMargin.toFixed(2)}%` : '—';
@@ -627,6 +645,8 @@ async function handleSaveQuote() {
   const mobile    = quoteMobile?.value.trim() || '';
   const email     = quoteEmail?.value.trim() || '';
   const whatsapp  = quoteWhatsapp?.value.trim() || '';
+  const paymentTerms = document.getElementById('quote-payment-terms')?.value.trim() || '';
+  const overrideDelivery = parseInt(document.getElementById('quote-override-delivery')?.value) || null;
   const buyerType = quoteBuyerType?.value || '';
   const status    = quoteStatus?.value || 'Draft';
 
@@ -697,6 +717,7 @@ async function handleSaveQuote() {
     if (saveQuoteBtn) saveQuoteBtn.disabled = true;
     const { quoteNumber } = await saveQuote({
       buyerName, company, country, mobile, email, whatsapp, buyerType, status,
+      paymentTerms, overrideDelivery,
       currency: currentCurrency,
       items, totalCost, totalValue, totalProfit, marginPct,
     });
@@ -1400,19 +1421,25 @@ function setupEventListeners() {
     addMoqBtn.addEventListener('click', async () => {
       const silInput = document.getElementById('new-moq-silhouette');
       const qtyInput = document.getElementById('new-moq-qty');
+      const leadInput = document.getElementById('new-sil-leadtime');
       const sil = silInput.value.trim();
       const qty = parseInt(qtyInput.value) || 0;
+      const leadTime = parseInt(leadInput.value) || 0;
       
-      if (!sil || qty <= 0) return showToast('Please enter a valid silhouette and quantity', true);
+      if (!sil || (qty <= 0 && leadTime <= 0)) return showToast('Please enter a valid silhouette and at least one rule (MOQ or Lead Time)', true);
       
       if (!pdfSettings.silhouetteMoqs) pdfSettings.silhouetteMoqs = {};
-      pdfSettings.silhouetteMoqs[sil] = qty;
+      if (!pdfSettings.silhouetteLeadTimes) pdfSettings.silhouetteLeadTimes = {};
+      if (qty > 0) pdfSettings.silhouetteMoqs[sil] = qty;
+      if (leadTime > 0) pdfSettings.silhouetteLeadTimes[sil] = leadTime;
+      
       await db_settings.put(pdfSettings);
       
       silInput.value = '';
       qtyInput.value = '';
+      if (leadInput) leadInput.value = '';
       renderMoqSettings();
-      showToast(`Saved MOQ for ${sil}`);
+      showToast(`Saved rules for ${sil}`);
       if (document.getElementById('builder-view').classList.contains('active')) renderBuilder();
     });
   }
@@ -1695,6 +1722,7 @@ function setupEventListeners() {
     document.getElementById('pm-use-silhouette-moq').checked = true;
     document.getElementById('pm-override-moq-container').style.display = 'none';
     document.getElementById('pm-override-moq').value = '';
+    document.getElementById('pm-leadtime').value = '';
     document.getElementById('pm-design').value = '';
     document.getElementById('pm-colour').value = '';
     document.getElementById('pm-stylecode').value = '';
@@ -1716,7 +1744,7 @@ function setupEventListeners() {
   });
 
   document.getElementById('pm-use-silhouette-moq')?.addEventListener('change', (e) => {
-    document.getElementById('pm-override-moq-container').style.display = e.target.checked ? 'none' : 'block';
+    document.getElementById('pm-override-moq-container').style.display = e.target.checked ? 'none' : 'grid';
   });
 
   pmSave?.addEventListener('click', async () => {
@@ -1735,6 +1763,7 @@ function setupEventListeners() {
       category: pCategory,
       silhouette: document.getElementById('pm-silhouette').value.trim() || 'Uncategorized',
       overrideMoq: document.getElementById('pm-use-silhouette-moq').checked ? null : (parseInt(document.getElementById('pm-override-moq').value) || null),
+      leadTime: document.getElementById('pm-use-silhouette-moq').checked ? null : (parseInt(document.getElementById('pm-leadtime').value) || null),
       design: pDesign,
       colour: pColour,
       styleCode: pStylecode,
@@ -1806,10 +1835,11 @@ function setupEventListeners() {
       document.getElementById('pm-category').value = prod.category || '';
       document.getElementById('pm-silhouette').value = prod.silhouette || '';
       
-      const hasOverride = prod.overrideMoq != null;
+      const hasOverride = prod.overrideMoq != null || prod.leadTime != null;
       document.getElementById('pm-use-silhouette-moq').checked = !hasOverride;
-      document.getElementById('pm-override-moq-container').style.display = hasOverride ? 'block' : 'none';
-      document.getElementById('pm-override-moq').value = hasOverride ? prod.overrideMoq : '';
+      document.getElementById('pm-override-moq-container').style.display = hasOverride ? 'grid' : 'none';
+      document.getElementById('pm-override-moq').value = prod.overrideMoq || '';
+      document.getElementById('pm-leadtime').value = prod.leadTime || '';
 
       document.getElementById('pm-design').value = prod.design || '';
       document.getElementById('pm-colour').value = prod.colour || '';

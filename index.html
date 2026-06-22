@@ -442,6 +442,7 @@
               <div class="filter-group"><label>Mobile Number <span style="color:#e04040">*</span></label><input type="tel" id="quote-mobile" placeholder="+1 234 567 8900"></div>
               <div class="filter-group"><label>Email Address <span style="color:#e04040">*</span></label><input type="email" id="quote-email" placeholder="john@example.com"></div>
               <div class="filter-group"><label>WhatsApp Number</label><input type="tel" id="quote-whatsapp" placeholder="+1 234 567 8900"></div>
+              <div class="filter-group"><label>Payment Terms</label><input type="text" id="quote-payment-terms" placeholder="e.g. 50% Advance"></div>
               <div class="filter-group">
                 <label>Buyer Type</label>
                 <select id="quote-buyer-type">
@@ -502,6 +503,8 @@
                 <div class="summary-panel" style="flex-direction:column; align-items:flex-end; gap:0.5rem; margin-top:2rem">
                   <div class="summary-row"><span>Items:</span><span id="quote-item-count" style="font-weight:500">0</span></div>
                   <div class="summary-row internal-col"><span>Total Cost:</span><span id="quote-total-cost" class="currency" style="font-weight:500">$0.00</span></div>
+                  <div class="summary-row"><span title="Calculated as max(ceil(qty/100 * leadTime)) across all products">Est. Delivery (Days):</span><span id="quote-calc-delivery" style="font-weight:500">0</span></div>
+                  <div class="summary-row"><span title="Override calculated delivery timeline">Override Delivery (Days):</span><input type="number" id="quote-override-delivery" style="width:60px; padding:2px; text-align:right;"></div>
                   <div class="summary-row"><span>Total Selling Value:</span><span id="quote-total-selling" class="currency" style="font-weight:500">$0.00</span></div>
                   <div class="summary-row green-text internal-col"><span>Total Profit:</span><span id="quote-total-profit" class="currency" style="font-weight:500">$0.00</span></div>
                   <div class="summary-row green-text internal-col"><span>Overall Margin %:</span><span id="quote-overall-margin" style="font-weight:500">0.00%</span></div>
@@ -671,19 +674,21 @@
               <div class="filter-group"><label>Delivery Timeline</label><input type="text" id="set-delivery" placeholder="45-60 Days"></div>
               <div class="filter-group"><label>Shipping Terms</label><input type="text" id="set-shipping" placeholder="FOB Malaysia"></div>
               <div class="filter-group"><label>Validity Period</label><input type="text" id="set-validity" placeholder="30 Days"></div>
+              <div class="filter-group"><label>PDF Delivery Buffer (Days)</label><input type="number" id="set-delivery-buffer" placeholder="3" min="0"></div>
             </div>
 
             <div class="dash-panel settings-panel">
-              <h3 class="dash-panel-title">MOQ Management (By Silhouette)</h3>
-              <p style="font-size:0.85rem; color:var(--text-secondary); margin-bottom:1rem">Define required MOQs per Silhouette. These will automatically apply to products in the Order Builder based on their Silhouette.</p>
+              <h3 class="dash-panel-title">Silhouette Rules (MOQ & Lead Time)</h3>
+              <p style="font-size:0.85rem; color:var(--text-secondary); margin-bottom:1rem">Define required MOQs and "Lead Time per 100 pcs" per Silhouette. These automatically apply to products in the Order Builder.</p>
               <div id="moq-list-container" style="display:flex; flex-direction:column; gap:8px; margin-bottom:15px; max-height:200px; overflow-y:auto;">
-                <!-- Dynamically populated MOQ rows -->
+                <!-- Dynamically populated Silhouette rows -->
               </div>
               <div class="filter-group" style="display:flex; flex-direction:row; gap:10px">
                 <select id="new-moq-silhouette" style="flex:2">
                   <option value="">Select Silhouette...</option>
                 </select>
-                <input type="number" id="new-moq-qty" placeholder="Qty" style="flex:1">
+                <input type="number" id="new-moq-qty" placeholder="MOQ" style="flex:1" title="Minimum Order Qty">
+                <input type="number" id="new-sil-leadtime" placeholder="Lead Time" style="flex:1" title="Lead Time per 100 pcs (days)">
                 <button id="add-moq-btn" class="secondary-btn">Add</button>
               </div>
             </div>
@@ -844,12 +849,19 @@
             <input type="text" id="pm-silhouette" placeholder="E.g. A-Line (Leave empty for Uncategorized)">
           </div>
           <div class="filter-group" style="grid-column: 1 / -1; background: var(--bg-dark); padding: 10px; border-radius: var(--radius-sm); border: 1px solid var(--border-color);">
-            <label style="margin-bottom: 8px;">Product MOQ</label>
+            <label style="margin-bottom: 8px;">Product Rules (MOQ & Lead Time)</label>
             <label style="display:flex; align-items:center; gap:8px; font-weight:normal; margin-bottom: 8px;">
-              <input type="checkbox" id="pm-use-silhouette-moq" checked> Use Silhouette MOQ
+              <input type="checkbox" id="pm-use-silhouette-moq" checked> Use Silhouette Rules
             </label>
-            <div id="pm-override-moq-container" style="display:none;">
-              <input type="number" id="pm-override-moq" placeholder="Enter custom MOQ for this product" min="1">
+            <div id="pm-override-moq-container" style="display:none; grid-template-columns: 1fr 1fr; gap:10px;">
+              <div>
+                <label style="font-size: 0.8rem; margin-bottom: 4px;">Custom MOQ</label>
+                <input type="number" id="pm-override-moq" placeholder="Enter custom MOQ" min="1">
+              </div>
+              <div>
+                <label style="font-size: 0.8rem; margin-bottom: 4px;">Lead Time (per 100pcs)</label>
+                <input type="number" id="pm-leadtime" placeholder="Days (e.g. 7)" min="1">
+              </div>
             </div>
           </div>
           <div class="filter-group">

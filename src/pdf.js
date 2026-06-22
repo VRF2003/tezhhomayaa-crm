@@ -1,5 +1,5 @@
 import html2pdf from 'html2pdf.js';
-import { toNumber, calcLineTotal, formatCurrency } from './utils/calc.js';
+import { toNumber, calcLineTotal, formatCurrency, calcDeliveryTimeline } from './utils/calc.js';
 import { logoBase64 } from './logoBase64.js';
 
 /**
@@ -238,6 +238,42 @@ export async function generateLuxuryPDF(quote, mode, settings, rates) {
       </div>
 
       ${moqHtml}
+
+      <!-- COMMERCIAL TERMS -->
+      <div style="margin-top: 40px; page-break-inside: avoid;">
+        <h4 style="font-size: 14px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; color: #444; border-bottom: 1px solid #000; padding-bottom: 8px; margin-bottom: 16px;">Commercial Terms</h4>
+        <table style="width: 100%; font-size: 12px; line-height: 1.6;">
+          ${(quote.paymentTerms || settings?.payment) ? `
+          <tr>
+            <td style="width: 150px; font-weight: 600; color: #666; padding: 4px 0;">Payment Terms:</td>
+            <td style="padding: 4px 0;">${quote.paymentTerms || settings?.payment}</td>
+          </tr>` : ''}
+          ${(() => {
+            const buffer = settings?.deliveryBuffer || 3;
+            const calcDays = calcDeliveryTimeline(quote.items, settings);
+            const baseDays = quote.overrideDelivery != null ? quote.overrideDelivery : calcDays;
+            if (baseDays > 0) {
+              const upperDays = baseDays + buffer;
+              return `
+              <tr>
+                <td style="width: 150px; font-weight: 600; color: #666; padding: 4px 0;">Estimated Delivery:</td>
+                <td style="padding: 4px 0;">${baseDays}–${upperDays} Days</td>
+              </tr>`;
+            }
+            return '';
+          })()}
+          ${settings?.shipping ? `
+          <tr>
+            <td style="width: 150px; font-weight: 600; color: #666; padding: 4px 0;">Shipping Terms:</td>
+            <td style="padding: 4px 0;">${settings.shipping}</td>
+          </tr>` : ''}
+          ${settings?.validity ? `
+          <tr>
+            <td style="width: 150px; font-weight: 600; color: #666; padding: 4px 0;">Quotation Validity:</td>
+            <td style="padding: 4px 0;">${settings.validity}</td>
+          </tr>` : ''}
+        </table>
+      </div>
 
       <!-- FOOTER -->
       <div style="margin-top: 60px; padding-top: 20px; border-top: 1px solid #eee; font-size: 11px; color: #888; text-align: center; page-break-inside: avoid;">

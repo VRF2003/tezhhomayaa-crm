@@ -64,3 +64,36 @@ export function formatCurrency(value, currency, rates) {
   const { symbol, rate } = rates[currency];
   return `${symbol}${(num * rate).toFixed(2)}`;
 }
+
+/**
+ * Calculates the maximum delivery timeline across all items in an order.
+ * @param {Array} items - Array of order items
+ * @param {Object} pdfSettings - Global settings containing silhouette lead times
+ * @param {number} fallbackLeadTime - Fallback lead time if neither product nor silhouette has one
+ */
+export function calcDeliveryTimeline(items, pdfSettings, fallbackLeadTime = 7) {
+  if (!items || items.length === 0) return 0;
+  
+  let maxTimeline = 0;
+  const silLeadTimes = pdfSettings?.silhouetteLeadTimes || {};
+  
+  for (const item of items) {
+    const p = item.product;
+    const qty = toNumber(item.qty);
+    
+    // Determine lead time per 100 pcs
+    let leadTime = fallbackLeadTime;
+    if (p.leadTime) {
+      leadTime = p.leadTime;
+    } else if (silLeadTimes[p.silhouette]) {
+      leadTime = silLeadTimes[p.silhouette];
+    }
+    
+    const itemTimeline = Math.ceil((qty / 100) * leadTime);
+    if (itemTimeline > maxTimeline) {
+      maxTimeline = itemTimeline;
+    }
+  }
+  
+  return maxTimeline;
+}
