@@ -684,9 +684,8 @@
                 <!-- Dynamically populated Silhouette rows -->
               </div>
               <div class="filter-group" style="display:flex; flex-direction:row; gap:10px">
-                <select id="new-moq-silhouette" style="flex:2">
-                  <option value="">Select Silhouette...</option>
-                </select>
+                <input type="text" id="new-moq-silhouette" placeholder="Enter or select Silhouette..." list="settings-sil-list" style="flex:2">
+                <datalist id="settings-sil-list"></datalist>
                 <input type="number" id="new-moq-qty" placeholder="MOQ" style="flex:1" title="Minimum Order Qty">
                 <input type="number" id="new-sil-leadtime" placeholder="Lead Time" style="flex:1" title="Lead Time per 100 pcs (days)">
                 <button id="add-moq-btn" class="secondary-btn">Add</button>
@@ -846,7 +845,8 @@
           </div>
           <div class="filter-group">
             <label>Silhouette</label>
-            <input type="text" id="pm-silhouette" placeholder="E.g. A-Line (Leave empty for Uncategorized)">
+            <input type="text" id="pm-silhouette" placeholder="E.g. A-Line (Leave empty for Uncategorized)" list="pm-sil-list">
+            <datalist id="pm-sil-list"></datalist>
           </div>
           <div class="filter-group" style="grid-column: 1 / -1; background: var(--bg-dark); padding: 10px; border-radius: var(--radius-sm); border: 1px solid var(--border-color);">
             <label style="margin-bottom: 8px;">Product Rules (MOQ & Lead Time)</label>

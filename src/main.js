@@ -225,11 +225,11 @@ function renderMoqSettings() {
   const moqs = pdfSettings.silhouetteMoqs || {};
   const leadTimes = pdfSettings.silhouetteLeadTimes || {};
   
-  const silSelect = document.getElementById('new-moq-silhouette');
-  if (silSelect) {
+  const silDatalist = document.getElementById('settings-sil-list');
+  if (silDatalist) {
     const uniqueSils = getUniqueValues('silhouette');
-    silSelect.innerHTML = '<option value="">Select Silhouette...</option>' + 
-      uniqueSils.map(sil => `<option value="${sil}">${sil}</option>`).join('');
+    const allSils = new Set([...Object.keys(moqs), ...Object.keys(leadTimes), ...uniqueSils]);
+    silDatalist.innerHTML = Array.from(allSils).map(sil => `<option value="${sil}">`).join('');
   }
 
   const allSils = new Set([...Object.keys(moqs), ...Object.keys(leadTimes)]);
@@ -330,6 +330,21 @@ function populateDropdowns() {
   if (builderCatProduct) {
     builderCatProduct.innerHTML = '<option value="">Select Product...</option>';
     getUniqueValues('productName').forEach(v => builderCatProduct.add(new Option(v, v)));
+  }
+
+  // Populate Silhouette datalists (combining products and settings)
+  const productSils = getUniqueValues('silhouette');
+  const moqs = pdfSettings?.silhouetteMoqs || {};
+  const leadTimes = pdfSettings?.silhouetteLeadTimes || {};
+  const allSils = new Set([...productSils, ...Object.keys(moqs), ...Object.keys(leadTimes)]);
+  
+  const pmSilList = document.getElementById('pm-sil-list');
+  if (pmSilList) {
+    pmSilList.innerHTML = Array.from(allSils).map(sil => `<option value="${sil}">`).join('');
+  }
+  const epSilList = document.getElementById('ep-sil-list');
+  if (epSilList) {
+    epSilList.innerHTML = Array.from(allSils).map(sil => `<option value="${sil}">`).join('');
   }
 }
 
