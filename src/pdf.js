@@ -66,13 +66,6 @@ export async function generateLuxuryPDF(quote, mode, settings, rates) {
           <div style="font-size: 12px; color: #666; margin-top: 4px;">Style: ${prod.styleCode || 'N/A'}</div>
           <div style="font-size: 12px; color: #666;">Design: ${prod.design || 'N/A'} | Colour: ${prod.colour || 'N/A'}</div>
           <div style="font-size: 11px; color: #888; margin-top: 4px;">Sizes: ${sizesSummary.join(' ')}</div>
-          ${(() => {
-            const itemDays = calcItemDeliveryTimeline(item.qty, prod, settings);
-            const buffer = settings?.deliveryBuffer || 3;
-            const lowerDays = itemDays + 1;
-            const upperDays = itemDays + buffer;
-            return itemDays > 0 ? `<div style="font-size: 11px; font-weight: 600; color: #444; margin-top: 4px;">Est. Delivery: ${lowerDays}-${upperDays} Days</div>` : '';
-          })()}
         </td>
         <td style="padding: 12px 0; text-align: center;">${item.qty}</td>
         <td style="padding: 12px 0; text-align: right;">${formatCur(item.unitPrice)}</td>
