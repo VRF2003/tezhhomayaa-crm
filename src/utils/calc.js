@@ -74,26 +74,47 @@ export function formatCurrency(value, currency, rates) {
 export function calcDeliveryTimeline(items, pdfSettings, fallbackLeadTime = 7) {
   if (!items || items.length === 0) return 0;
   
-  let maxTimeline = 0;
   const silLeadTimes = pdfSettings?.silhouetteLeadTimes || {};
+  
+  // 1. Group quantities by rule (Silhouette or Product Name)
+  const groupQty = {};
+  const groupLeadTime = {};
   
   for (const item of items) {
     const p = item.product;
     const qty = toNumber(item.qty);
     
-    // Determine lead time per 100 pcs
+    let key = 'fallback';
     let leadTime = fallbackLeadTime;
+    
     if (p.leadTime) {
+      key = p.productName; // Product-specific override
       leadTime = p.leadTime;
     } else if (silLeadTimes[p.silhouette]) {
+      key = p.silhouette;
       leadTime = silLeadTimes[p.silhouette];
     } else if (silLeadTimes[p.productName]) {
+      key = p.productName;
       leadTime = silLeadTimes[p.productName];
     }
     
-    const itemTimeline = Math.ceil(qty / 100) * leadTime;
-    if (itemTimeline > maxTimeline) {
-      maxTimeline = itemTimeline;
+    groupQty[key] = (groupQty[key] || 0) + qty;
+    groupLeadTime[key] = leadTime;
+  }
+  
+  let maxTimeline = 0;
+  
+  // 2. Calculate proportional timeline for each group and find the max
+  for (const key in groupQty) {
+    const totalQty = groupQty[key];
+    const leadTime = groupLeadTime[key];
+    
+    // Proportional scaling with a minimum of 1 block (base lead time)
+    const factor = Math.max(1, totalQty / 100);
+    const timeline = Math.round(factor * leadTime);
+    
+    if (timeline > maxTimeline) {
+      maxTimeline = timeline;
     }
   }
   
