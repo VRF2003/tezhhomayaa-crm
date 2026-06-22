@@ -1600,6 +1600,34 @@ function setupEventListeners() {
   document.getElementById('drawer-close')?.addEventListener('click', () => buyerDrawer?.classList.add('hidden'));
   document.getElementById('order-drawer-close')?.addEventListener('click', () => orderDrawer?.classList.add('hidden'));
 
+  // Mobile Sidebar Toggle
+  const mainSidebar = document.getElementById('main-sidebar');
+  const mobileSidebarOverlay = document.getElementById('mobile-sidebar-overlay');
+  
+  const closeMobileSidebar = () => {
+    mainSidebar?.classList.remove('sidebar-open');
+    mobileSidebarOverlay?.classList.add('hidden');
+    document.body.style.overflow = '';
+  };
+  
+  document.getElementById('mobile-menu-btn')?.addEventListener('click', () => {
+    mainSidebar?.classList.add('sidebar-open');
+    mobileSidebarOverlay?.classList.remove('hidden');
+    document.body.style.overflow = 'hidden';
+  });
+  
+  document.getElementById('sidebar-close-btn')?.addEventListener('click', closeMobileSidebar);
+  mobileSidebarOverlay?.addEventListener('click', closeMobileSidebar);
+  
+  // Close sidebar when a nav link is clicked on mobile
+  navLinks.forEach(link => {
+    link.addEventListener('click', () => {
+      if (window.innerWidth <= 900) {
+        closeMobileSidebar();
+      }
+    });
+  });
+
   // Load into Builder from order drawer
   orderLoadBuilderBtn?.addEventListener('click', () => {
     if (currentOrderDrawerQuote) loadQuoteIntoBuilder(currentOrderDrawerQuote);
