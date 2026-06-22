@@ -109,10 +109,19 @@ export function calcDeliveryTimeline(items, pdfSettings, fallbackLeadTime = 7) {
     const totalQty = groupQty[key];
     const leadTime = groupLeadTime[key];
     
-    // Proportional scaling, rounding up as per spec
-    // Note: Math.max(1) ensures Q <= 100 uses full BaseLeadTime
-    const factor = Math.max(1, totalQty / 100);
-    const timeline = Math.ceil(factor * leadTime);
+    // Determine MOQ for this group
+    let moq = 100;
+    if (pdfSettings?.silhouetteMoqs && pdfSettings.silhouetteMoqs[key]) {
+      moq = pdfSettings.silhouetteMoqs[key];
+    }
+    
+    // Proportional scaling for small orders. For orders >= MOQ, use full base lead time.
+    let timeline;
+    if (totalQty >= moq) {
+      timeline = leadTime;
+    } else {
+      timeline = Math.ceil((totalQty / moq) * leadTime);
+    }
     
     if (timeline > maxTimeline) {
       maxTimeline = timeline;
@@ -120,4 +129,33 @@ export function calcDeliveryTimeline(items, pdfSettings, fallbackLeadTime = 7) {
   }
   
   return maxTimeline;
+}
+
+// Helper to calculate timeline for a single item or grouped quantity
+export function calcItemDeliveryTimeline(qty, p, pdfSettings, fallbackLeadTime = 7) {
+  const silLeadTimes = pdfSettings?.silhouetteLeadTimes || {};
+  const silMoqs = pdfSettings?.silhouetteMoqs || {};
+  
+  let key = 'fallback';
+  let leadTime = fallbackLeadTime;
+  
+  if (p.leadTime) {
+    key = p.productName;
+    leadTime = p.leadTime;
+  } else if (silLeadTimes[p.silhouette]) {
+    key = p.silhouette;
+    leadTime = silLeadTimes[p.silhouette];
+  } else if (silLeadTimes[p.productName]) {
+    key = p.productName;
+    leadTime = silLeadTimes[p.productName];
+  }
+  
+  let moq = 100;
+  if (silMoqs[key]) moq = silMoqs[key];
+  
+  if (qty >= moq) {
+    return leadTime;
+  } else {
+    return Math.ceil((qty / moq) * leadTime);
+  }
 }
