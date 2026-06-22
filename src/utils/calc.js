@@ -115,13 +115,8 @@ export function calcDeliveryTimeline(items, pdfSettings, fallbackLeadTime = 7) {
       moq = pdfSettings.silhouetteMoqs[key];
     }
     
-    // Proportional scaling for small orders. For orders >= MOQ, use full base lead time.
-    let timeline;
-    if (totalQty >= moq) {
-      timeline = leadTime;
-    } else {
-      timeline = Math.ceil((totalQty / moq) * leadTime);
-    }
+    // Proportional scaling for all orders.
+    const timeline = Math.ceil((totalQty / moq) * leadTime);
     
     if (timeline > maxTimeline) {
       maxTimeline = timeline;
@@ -153,9 +148,5 @@ export function calcItemDeliveryTimeline(qty, p, pdfSettings, fallbackLeadTime =
   let moq = 100;
   if (silMoqs[key]) moq = silMoqs[key];
   
-  if (qty >= moq) {
-    return leadTime;
-  } else {
-    return Math.ceil((qty / moq) * leadTime);
-  }
+  return Math.ceil((qty / moq) * leadTime);
 }
