@@ -102,9 +102,9 @@ export function calcDeliveryTimeline(items, pdfSettings, fallbackLeadTime = 7) {
     groupLeadTime[key] = leadTime;
   }
   
-  let maxTimeline = 0;
+  let totalOrderTimeline = 0;
   
-  // 2. Calculate proportional timeline for each group and find the max
+  // 2. Calculate proportional timeline for each group and sum them up (sequential production)
   for (const key in groupQty) {
     const totalQty = groupQty[key];
     const leadTime = groupLeadTime[key];
@@ -118,12 +118,10 @@ export function calcDeliveryTimeline(items, pdfSettings, fallbackLeadTime = 7) {
     // Proportional scaling for all orders.
     const timeline = Math.ceil((totalQty / moq) * leadTime);
     
-    if (timeline > maxTimeline) {
-      maxTimeline = timeline;
-    }
+    totalOrderTimeline += timeline;
   }
   
-  return maxTimeline;
+  return totalOrderTimeline;
 }
 
 // Helper to calculate timeline for a single item or grouped quantity
