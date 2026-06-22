@@ -87,9 +87,11 @@ export function calcDeliveryTimeline(items, pdfSettings, fallbackLeadTime = 7) {
       leadTime = p.leadTime;
     } else if (silLeadTimes[p.silhouette]) {
       leadTime = silLeadTimes[p.silhouette];
+    } else if (silLeadTimes[p.productName]) {
+      leadTime = silLeadTimes[p.productName];
     }
     
-    const itemTimeline = Math.ceil((qty / 100) * leadTime);
+    const itemTimeline = Math.ceil(qty / 100) * leadTime;
     if (itemTimeline > maxTimeline) {
       maxTimeline = itemTimeline;
     }
