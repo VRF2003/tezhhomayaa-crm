@@ -109,9 +109,10 @@ export function calcDeliveryTimeline(items, pdfSettings, fallbackLeadTime = 7) {
     const totalQty = groupQty[key];
     const leadTime = groupLeadTime[key];
     
-    // Proportional scaling with a minimum of 1 block (base lead time)
+    // Proportional scaling, rounding up as per spec
+    // Note: Math.max(1) ensures Q <= 100 uses full BaseLeadTime
     const factor = Math.max(1, totalQty / 100);
-    const timeline = Math.round(factor * leadTime);
+    const timeline = Math.ceil(factor * leadTime);
     
     if (timeline > maxTimeline) {
       maxTimeline = timeline;

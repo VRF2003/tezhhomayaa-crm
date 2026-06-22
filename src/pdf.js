@@ -253,11 +253,12 @@ export async function generateLuxuryPDF(quote, mode, settings, rates) {
             const calcDays = calcDeliveryTimeline(quote.items, settings);
             const baseDays = quote.overrideDelivery != null ? quote.overrideDelivery : calcDays;
             if (baseDays > 0) {
+              const lowerDays = baseDays + 1;
               const upperDays = baseDays + buffer;
               return `
               <tr>
                 <td style="width: 150px; font-weight: 600; color: #666; padding: 4px 0;">Estimated Delivery:</td>
-                <td style="padding: 4px 0;">${baseDays}–${upperDays} Days</td>
+                <td style="padding: 4px 0;">${lowerDays}–${upperDays} Days</td>
               </tr>`;
             }
             return '';
