@@ -21,7 +21,7 @@
     <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <title>Tezhhomayaa Wholesale CRM</title>
-    <script type="module" crossorigin src="/assets/index-w2fQnapy.js"></script>
+    <script type="module" crossorigin src="/assets/index-CLMifuLU.js"></script>
     <link rel="stylesheet" crossorigin href="/assets/index-CLmb_YA_.css">
   </head>
   <body>

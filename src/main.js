@@ -247,7 +247,10 @@ function renderMoqSettings() {
       <div>
         <strong style="color:var(--text-primary)">${sil}</strong>: MOQ: ${q} | Lead Time: ${l}
       </div>
-      <button class="icon-btn delete-moq-btn" data-sil="${sil}" style="color:#e04040">✕</button>
+      <div style="display:flex; gap:8px;">
+        <button class="icon-btn edit-moq-btn" data-sil="${sil}" data-moq="${moqs[sil] || ''}" data-lead="${leadTimes[sil] || ''}" style="color:var(--text-secondary)">✎</button>
+        <button class="icon-btn delete-moq-btn" data-sil="${sil}" style="color:#e04040">✕</button>
+      </div>
     </div>
     `;
   }).join('');
@@ -261,6 +264,22 @@ function renderMoqSettings() {
       renderMoqSettings();
       showToast(`Removed rules for ${sil}`);
       if (document.getElementById('builder-view').classList.contains('active')) renderBuilder();
+    });
+  });
+
+  container.querySelectorAll('.edit-moq-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      const sil = e.currentTarget.getAttribute('data-sil');
+      const moq = e.currentTarget.getAttribute('data-moq');
+      const lead = e.currentTarget.getAttribute('data-lead');
+      
+      document.getElementById('new-moq-silhouette').value = sil;
+      document.getElementById('new-moq-qty').value = moq;
+      const leadInput = document.getElementById('new-sil-leadtime');
+      if(leadInput) leadInput.value = lead;
+      
+      const addBtn = document.getElementById('add-moq-btn');
+      if(addBtn) addBtn.textContent = 'Save Rule';
     });
   });
 }
@@ -1453,6 +1472,10 @@ function setupEventListeners() {
       silInput.value = '';
       qtyInput.value = '';
       if (leadInput) leadInput.value = '';
+      
+      const addBtn = document.getElementById('add-moq-btn');
+      if(addBtn) addBtn.textContent = 'Add';
+      
       renderMoqSettings();
       showToast(`Saved rules for ${sil}`);
       if (document.getElementById('builder-view').classList.contains('active')) renderBuilder();
