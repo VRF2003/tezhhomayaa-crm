@@ -930,3 +930,6 @@ mark.search-highlight {
   background: #1a1a1a;
   flex-shrink: 0;
 }
+
+.hidden { display: none !important; }
+
