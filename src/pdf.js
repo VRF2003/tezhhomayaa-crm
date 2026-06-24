@@ -60,8 +60,8 @@ export async function generateLuxuryPDF(quote, mode, settings, rates) {
     let trHtml = `
       <tr style="border-bottom: 1px solid #eee;">
         <td style="padding: 12px 0;">${idx + 1}</td>
-        <td style="padding: 12px 0;">${imgStr}</td>
         <td style="padding: 12px 0;">
+          <div style="margin-bottom: 8px;">${imgStr}</div>
           <div style="font-weight: 600; font-size: 14px; color: #111;">${prod.productName || 'Unknown Product'}</div>
           <div style="font-size: 12px; color: #666; margin-top: 4px;">Style: ${prod.styleCode || 'N/A'}</div>
           <div style="font-size: 12px; color: #666;">Design: ${prod.design || 'N/A'} | Colour: ${prod.colour || 'N/A'}</div>
@@ -190,7 +190,6 @@ export async function generateLuxuryPDF(quote, mode, settings, rates) {
         <thead>
           <tr style="border-bottom: 2px solid #111;">
             <th style="padding: 12px 0; text-align: left; font-size: 11px; font-weight: 600; color: #666; text-transform: uppercase;">#</th>
-            <th style="padding: 12px 0; text-align: left; font-size: 11px; font-weight: 600; color: #666; text-transform: uppercase;">Image</th>
             <th style="padding: 12px 0; text-align: left; font-size: 11px; font-weight: 600; color: #666; text-transform: uppercase;">Description</th>
             <th style="padding: 12px 0; text-align: center; font-size: 11px; font-weight: 600; color: #666; text-transform: uppercase;">Qty</th>
             <th style="padding: 12px 0; text-align: right; font-size: 11px; font-weight: 600; color: #666; text-transform: uppercase;">Unit Price</th>
