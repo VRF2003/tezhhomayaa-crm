@@ -23,6 +23,10 @@ export async function initGlobalSearch() {
   const clearBtn = document.getElementById('global-search-clear');
   const overlay = document.getElementById('quickview-modal-overlay');
   
+  const qvTier = document.getElementById('quickview-tier');
+  const qvSameQty = document.getElementById('qv-same-qty');
+  const qvQtyInputs = ['xs', 's', 'm', 'l', 'xl', '2xl'].map(s => document.getElementById(`qv-qty-${s}`));
+  
   if (!input || !dropdown) return;
 
   // Load products once
@@ -104,11 +108,39 @@ export async function initGlobalSearch() {
   document.getElementById('quickview-cancel')?.addEventListener('click', () => {
     overlay.classList.add('hidden');
   });
+
+  // Dynamic Price Update on Tier Change
+  qvTier?.addEventListener('change', updateQuickViewPrice);
+
+  // Same Qty Logic
+  qvSameQty?.addEventListener('change', (e) => {
+    if (e.target.checked && qvQtyInputs[0]) {
+      const val = qvQtyInputs[0].value;
+      qvQtyInputs.forEach(el => { if(el) el.value = val; });
+    }
+  });
+
+  qvQtyInputs[0]?.addEventListener('input', (e) => {
+    if (qvSameQty?.checked) {
+      const val = e.target.value;
+      qvQtyInputs.forEach(el => { if(el) el.value = val; });
+    }
+  });
   
   // Add to Order from Modal
   document.getElementById('quickview-add')?.addEventListener('click', () => {
     if (activeQuickViewProduct) {
-      document.dispatchEvent(new CustomEvent('search:add-to-order', { detail: activeQuickViewProduct }));
+      const tier = qvTier?.value || 'wholesale50';
+      const sizes = {
+        xs: parseInt(qvQtyInputs[0]?.value) || 0,
+        s: parseInt(qvQtyInputs[1]?.value) || 0,
+        m: parseInt(qvQtyInputs[2]?.value) || 0,
+        l: parseInt(qvQtyInputs[3]?.value) || 0,
+        xl: parseInt(qvQtyInputs[4]?.value) || 0,
+        xxl: parseInt(qvQtyInputs[5]?.value) || 0,
+      };
+      const detail = { product: activeQuickViewProduct, tier, sizes };
+      document.dispatchEvent(new CustomEvent('search:add-to-order', { detail }));
       overlay.classList.add('hidden');
     }
   });
@@ -187,8 +219,11 @@ function renderDropdown(results, terms) {
       dropdown.classList.add('hidden');
       
       if (e.shiftKey) {
-        // Shift+Click => Add directly
-        document.dispatchEvent(new CustomEvent('search:add-to-order', { detail: prod }));
+        // Shift+Click => Add directly with default tier and 0 sizes
+        const defaultSizes = {xs:0, s:0, m:0, l:0, xl:0, xxl:0};
+        document.dispatchEvent(new CustomEvent('search:add-to-order', { 
+          detail: { product: prod, tier: 'wholesale50', sizes: defaultSizes }
+        }));
       } else {
         // Click => Open Modal
         openQuickViewModal(prod);
@@ -199,10 +234,32 @@ function renderDropdown(results, terms) {
 
 let activeQuickViewProduct = null;
 
+function updateQuickViewPrice() {
+  if (!activeQuickViewProduct) return;
+  const tierVal = document.getElementById('quickview-tier')?.value || 'wholesale50';
+  let price = 0;
+  if (tierVal === 'wholesale50') price = activeQuickViewProduct.ws50 || activeQuickViewProduct.tier1 || 0;
+  if (tierVal === 'wholesale40') price = activeQuickViewProduct.ws40 || activeQuickViewProduct.tier2 || 0;
+  if (tierVal === 'wholesale30') price = activeQuickViewProduct.ws30 || activeQuickViewProduct.tier3 || 0;
+  
+  const priceEl = document.getElementById('qv-price-display');
+  if (priceEl) priceEl.innerText = `$${parseFloat(price).toFixed(2)}`;
+}
+
 function openQuickViewModal(prod) {
   const overlay = document.getElementById('quickview-modal-overlay');
   const content = document.getElementById('quickview-content');
   activeQuickViewProduct = prod;
+
+  // Reset inputs
+  ['xs', 's', 'm', 'l', 'xl', '2xl'].forEach(s => {
+    const el = document.getElementById(`qv-qty-${s}`);
+    if (el) el.value = 0;
+  });
+  const sameQty = document.getElementById('qv-same-qty');
+  if (sameQty) sameQty.checked = false;
+  const tierSelect = document.getElementById('quickview-tier');
+  if (tierSelect) tierSelect.value = 'wholesale50';
 
   const imgSrc = prod.image ? `<img id="quickview-img" src="${prod.image}">` : `<div id="quickview-img" style="display:flex;align-items:center;justify-content:center;color:#666;">No Image</div>`;
   
@@ -215,9 +272,13 @@ function openQuickViewModal(prod) {
       <div style="margin-bottom: 4px;"><strong>Colour:</strong> ${prod.colour || 'N/A'}</div>
       <div style="margin-bottom: 4px;"><strong>Category:</strong> ${prod.category || 'N/A'}</div>
       <div style="margin-bottom: 4px;"><strong>Fabric:</strong> ${prod.fabric || 'N/A'}</div>
-      <div style="margin-bottom: 12px;"><strong>Wholesale Price:</strong> $${parseFloat(prod.tier1 || prod.ws50 || 0).toFixed(2)}</div>
+      <div style="margin-bottom: 12px; font-size: 1.1rem; border-top: 1px solid var(--border-color); padding-top: 8px; margin-top: 8px;">
+        <strong>Price:</strong> <span id="qv-price-display" style="color: var(--accent-gold); font-weight:600;">$0.00</span>
+      </div>
     </div>
   `;
+
+  updateQuickViewPrice();
 
   overlay.classList.remove('hidden');
 }

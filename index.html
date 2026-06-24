@@ -369,14 +369,50 @@
         <!-- ══ EDIT ITEM MODAL ══════════════════════════ -->
         <!-- Global Search Quick-View Modal -->
         <div id="quickview-modal-overlay" class="modal-overlay hidden" role="dialog" aria-modal="true">
-          <div class="modal" style="max-width: 600px;">
+          <div class="modal" style="max-width: 800px; width: 95%;">
             <h2 id="quickview-title" class="modal-title" style="margin-bottom: 1rem;">Product Details</h2>
-            <div id="quickview-content" style="display:flex; gap: 1.5rem; margin-bottom: 1.5rem;">
-              <!-- Dynamic content injected by JS -->
+            
+            <div style="display:flex; flex-wrap:wrap; gap: 2rem;">
+              <!-- Left: Image & Details -->
+              <div id="quickview-content" style="flex: 1; min-width: 300px; display:flex; gap: 1.5rem; margin-bottom: 1.5rem;">
+                <!-- Dynamic content injected by JS -->
+              </div>
+              
+              <!-- Right: Pricing & Sizing -->
+              <div style="flex: 1; min-width: 300px; background:var(--bg-card); padding:1rem; border-radius:8px; border:1px solid var(--border-color); margin-bottom: 1.5rem;">
+                <div class="form-group" style="margin-bottom: 1.5rem;">
+                  <div class="filter-group" style="width: 100%;">
+                    <label>Wholesale Tier</label>
+                    <select id="quickview-tier">
+                      <option value="wholesale50">Wholesale 50</option>
+                      <option value="wholesale40">Wholesale 40</option>
+                      <option value="wholesale30">Wholesale 30</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div class="filter-group" style="width: 100%;">
+                  <label>Size Matrix</label>
+                  <div class="size-matrix-container" style="margin-top:0.5rem;">
+                    <div class="size-matrix" style="margin-bottom: 1rem;">
+                      <div class="size-col"><label>XS</label><input type="number" id="qv-qty-xs" min="0" value="0"></div>
+                      <div class="size-col"><label>S</label><input type="number" id="qv-qty-s" min="0" value="0"></div>
+                      <div class="size-col"><label>M</label><input type="number" id="qv-qty-m" min="0" value="0"></div>
+                      <div class="size-col"><label>L</label><input type="number" id="qv-qty-l" min="0" value="0"></div>
+                      <div class="size-col"><label>XL</label><input type="number" id="qv-qty-xl" min="0" value="0"></div>
+                      <div class="size-col"><label>2XL</label><input type="number" id="qv-qty-2xl" min="0" value="0"></div>
+                    </div>
+                    <label class="same-qty-label" style="display:flex; align-items:center; gap:0.5rem; font-size:0.85rem; color:var(--text-secondary); cursor:pointer;">
+                      <input type="checkbox" id="qv-same-qty"> Same Quantity for All Sizes
+                    </label>
+                  </div>
+                </div>
+              </div>
             </div>
-            <div class="modal-actions" style="justify-content: space-between;">
+
+            <div class="modal-actions" style="justify-content: space-between; border-top: 1px solid var(--border-color); padding-top: 1.5rem;">
               <button id="quickview-cancel" class="icon-btn" style="padding:0.5rem 1rem;">Cancel</button>
-              <button id="quickview-add" class="primary-btn" style="background:var(--accent-gold); color:var(--bg-dark); border-color:var(--accent-gold);">Add to Order Builder</button>
+              <button id="quickview-add" class="primary-btn" style="background:var(--accent-gold); color:var(--bg-dark); border-color:var(--accent-gold);">+ Add to Order</button>
             </div>
           </div>
         </div>

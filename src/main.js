@@ -411,15 +411,48 @@ function renderSearchTable() {
 
   // Global Search integration
   document.addEventListener('search:add-to-order', (e) => {
-    const prod = e.detail;
+    const { product, tier, sizes } = e.detail;
     activateView('builder-view');
-    if (builderCatProduct) {
-      builderCatProduct.value = prod.productName;
-      updateBuilderInfo();
-      // Add a small shake or highlight animation to the builder table
-      builderCatProduct.focus();
-      showToast(`Selected ${prod.productName}. Please enter quantities and click Add.`);
+    
+    // Calculate total qty
+    const qty = (sizes.xs || 0) + (sizes.s || 0) + (sizes.m || 0) + (sizes.l || 0) + (sizes.xl || 0) + (sizes.xxl || 0);
+
+    // If no quantity is specified (e.g. from Shift+Click), just populate the form
+    if (qty < 1) {
+      if (builderCatProduct) {
+        builderCatProduct.value = product.productName;
+        updateBuilderInfo();
+        builderCatProduct.focus();
+        showToast(`Selected ${product.productName}. Please enter quantities and click Add.`);
+      }
+      return;
     }
+
+    // Determine unit price
+    let unitPrice = 0;
+    if (tier === 'wholesale50') unitPrice = product.ws50 || product.tier1 || 0;
+    if (tier === 'wholesale40') unitPrice = product.ws40 || product.tier2 || 0;
+    if (tier === 'wholesale30') unitPrice = product.ws30 || product.tier3 || 0;
+
+    // Check if item already exists in cart
+    const existing = orderItems.findIndex(i => i.product.styleCode === product.styleCode && i.tier === tier);
+    if (existing > -1) {
+      const exSizes = orderItems[existing].sizes || {xs:0, s:0, m:0, l:0, xl:0, xxl:0};
+      orderItems[existing].sizes = {
+        xs: exSizes.xs + sizes.xs,
+        s: exSizes.s + sizes.s,
+        m: exSizes.m + sizes.m,
+        l: exSizes.l + sizes.l,
+        xl: exSizes.xl + sizes.xl,
+        xxl: exSizes.xxl + sizes.xxl
+      };
+      orderItems[existing].qty = (orderItems[existing].sizes.xs || 0) + (orderItems[existing].sizes.s || 0) + (orderItems[existing].sizes.m || 0) + (orderItems[existing].sizes.l || 0) + (orderItems[existing].sizes.xl || 0) + (orderItems[existing].sizes.xxl || 0);
+    } else {
+      orderItems.push({ product, tier, sizes, qty, unitPrice });
+    }
+    
+    updateOrderViews();
+    showToast(`Added ${qty}x ${product.productName} to your order.`);
   });
 
   // ── Order Builder ──────────────────────────────────────────
