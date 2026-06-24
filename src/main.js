@@ -5,6 +5,7 @@ import { saveQuote, getReport, deleteQuote, updateQuoteFields, archiveQuote, res
 import { testGoogleSheetsConnection, syncOrderToSheets } from './gsheets.js';
 import { generateLuxuryPDF } from './pdf.js';
 import { toNumber, calcLineTotal, calcSizeTotal, formatCurrency, calcDeliveryTimeline } from './utils/calc.js';
+import { initGlobalSearch } from './search.js';
 
 // ── State ──────────────────────────────────────────────────
 export let orderItems = [];
@@ -333,6 +334,7 @@ async function init() {
   await loadProducts();
   populateDropdowns();
   setupEventListeners();
+  initGlobalSearch();
   renderSearchTable();
   updateOrderViews();
   activateView('dashboard-view');
@@ -407,7 +409,20 @@ function renderSearchTable() {
       </tr>`).join('');
 }
 
-// ── Order Builder ──────────────────────────────────────────
+  // Global Search integration
+  document.addEventListener('search:add-to-order', (e) => {
+    const prod = e.detail;
+    activateView('builder-view');
+    if (builderCatProduct) {
+      builderCatProduct.value = prod.productName;
+      updateBuilderInfo();
+      // Add a small shake or highlight animation to the builder table
+      builderCatProduct.focus();
+      showToast(`Selected ${prod.productName}. Please enter quantities and click Add.`);
+    }
+  });
+
+  // ── Order Builder ──────────────────────────────────────────
 function handleAddToOrder() {
   const pName   = builderCatProduct?.value;
   const pDesign = builderCatDesign?.value;

@@ -102,6 +102,13 @@
             <h2 id="view-title">Dashboard</h2>
             <p id="view-subtitle" class="view-subtitle"></p>
           </div>
+
+          <div class="global-search-wrapper">
+            <input type="text" id="global-search-input" placeholder="Search products... (Press '/')" autocomplete="off">
+            <span id="global-search-clear" class="hidden">✕</span>
+            <div id="global-search-dropdown" class="hidden"></div>
+          </div>
+
           <div class="header-actions" id="header-actions"></div>
         </header>
 
@@ -360,6 +367,20 @@
         </section>
 
         <!-- ══ EDIT ITEM MODAL ══════════════════════════ -->
+        <!-- Global Search Quick-View Modal -->
+        <div id="quickview-modal-overlay" class="modal-overlay hidden" role="dialog" aria-modal="true">
+          <div class="modal" style="max-width: 600px;">
+            <h2 id="quickview-title" class="modal-title" style="margin-bottom: 1rem;">Product Details</h2>
+            <div id="quickview-content" style="display:flex; gap: 1.5rem; margin-bottom: 1.5rem;">
+              <!-- Dynamic content injected by JS -->
+            </div>
+            <div class="modal-actions" style="justify-content: space-between;">
+              <button id="quickview-cancel" class="icon-btn" style="padding:0.5rem 1rem;">Cancel</button>
+              <button id="quickview-add" class="primary-btn" style="background:var(--accent-gold); color:var(--bg-dark); border-color:var(--accent-gold);">Add to Order Builder</button>
+            </div>
+          </div>
+        </div>
+
         <div id="edit-modal-overlay" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="edit-modal-title">
           <div class="modal-box">
             <div class="modal-header">

@@ -809,3 +809,124 @@ select:disabled, input:disabled { opacity: 0.35; cursor: not-allowed; }
     grid-template-columns: repeat(2, 1fr);
   }
 }
+
+/* Global Search UI */
+.global-search-wrapper {
+  flex: 1;
+  max-width: 400px;
+  margin: 0 20px;
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+#global-search-input {
+  width: 100%;
+  padding: 10px 35px 10px 16px;
+  border-radius: 8px;
+  border: 1px solid var(--border-color);
+  background: var(--bg-card);
+  color: var(--text-primary);
+  font-family: var(--font-body);
+  font-size: 0.95rem;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+#global-search-input:focus {
+  outline: none;
+  border-color: var(--accent-gold);
+  box-shadow: 0 0 0 2px rgba(212, 175, 55, 0.2);
+}
+
+#global-search-clear {
+  position: absolute;
+  right: 12px;
+  cursor: pointer;
+  color: var(--text-muted);
+  font-size: 14px;
+}
+
+#global-search-clear:hover {
+  color: var(--accent-gold);
+}
+
+#global-search-dropdown {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  width: 100%;
+  max-height: 400px;
+  overflow-y: auto;
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+  z-index: 1000;
+}
+
+.search-dropdown-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  border-bottom: 1px solid var(--border-color);
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.search-dropdown-item:last-child {
+  border-bottom: none;
+}
+
+.search-dropdown-item:hover, .search-dropdown-item.active {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.search-dropdown-img {
+  width: 40px;
+  height: 50px;
+  object-fit: cover;
+  border-radius: 4px;
+  background: #333;
+  flex-shrink: 0;
+}
+
+.search-dropdown-details {
+  flex: 1;
+  min-width: 0;
+}
+
+.search-dropdown-title {
+  font-family: var(--font-heading);
+  font-size: 0.95rem;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-bottom: 2px;
+}
+
+.search-dropdown-meta {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+mark.search-highlight {
+  background: rgba(212, 175, 55, 0.3);
+  color: var(--accent-gold);
+  border-radius: 2px;
+  padding: 0 2px;
+}
+
+/* Quick-View Image */
+#quickview-img {
+  width: 160px;
+  height: auto;
+  object-fit: contain;
+  border-radius: 8px;
+  background: #1a1a1a;
+  flex-shrink: 0;
+}
