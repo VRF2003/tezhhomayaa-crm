@@ -99,6 +99,8 @@ export async function initGlobalSearch() {
   });
   
   input.addEventListener('focus', () => {
+    if (overlay) overlay.classList.add('hidden');
+    
     if (input.value.trim().length > 0 && currentResults.length > 0) {
       dropdown.classList.remove('hidden');
     }
