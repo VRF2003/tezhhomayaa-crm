@@ -67,6 +67,7 @@ export const db_settings = {
 export const db_products = {
   getAll: async () => await apiRequest('products', 'GET') || [],
   get: async (id) => await apiRequest('products', 'GET', null, id),
+  getByStyleCode: async (code) => await apiRequest('products', 'GET', null, code),
   put: async (p) => { await apiRequest('products', 'PUT', p); },
   delete: async (id) => { await apiRequest('products', 'DELETE', null, id); },
   clear: async () => { await apiRequest('products', 'DELETE'); }
