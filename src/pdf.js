@@ -176,7 +176,12 @@ export async function generateLuxuryPDF(quote, mode, settings, rates) {
 
   // Build the complete HTML Template
   const htmlContent = `
-    <div style="font-family: 'Playfair Display', serif; color: ${textColor}; max-width: 800px; margin: 0 auto; background: ${bgColor}; padding: 40px; -webkit-print-color-adjust: exact; print-color-adjust: exact;">
+    <div style="position: relative; font-family: 'Playfair Display', serif; color: ${textColor}; max-width: 800px; margin: 0 auto; background: ${bgColor}; padding: 40px; -webkit-print-color-adjust: exact; print-color-adjust: exact;">
+      ${settings?.watermarkUrl ? `
+        <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); opacity: 0.08; z-index: 0; pointer-events: none;">
+          <img src="${settings.watermarkUrl}" style="width: 400px; max-width: 80vw; object-fit: contain;" />
+        </div>
+      ` : ''}
       <style>
         @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap');
       </style>
@@ -303,6 +308,19 @@ export async function generateLuxuryPDF(quote, mode, settings, rates) {
           </tr>` : ''}
         </table>
       </div>
+
+      ${(settings?.signatureUrl || settings?.stampUrl) ? `
+      <!-- SIGNATURE & STAMP -->
+      <div style="margin-top: 60px; display: flex; justify-content: flex-end; page-break-inside: avoid;">
+        <div style="text-align: center; width: 250px;">
+          <div style="height: 100px; position: relative; border-bottom: 1px solid ${borderCol}; margin-bottom: 8px;">
+            ${settings?.signatureUrl ? `<img src="${settings.signatureUrl}" style="position: absolute; bottom: 0; left: 50%; transform: translateX(-50%); max-height: 80px; max-width: 150px; object-fit: contain; z-index: 2;" />` : ''}
+            ${settings?.stampUrl ? `<img src="${settings.stampUrl}" style="position: absolute; bottom: 10px; right: -20px; max-height: 80px; max-width: 100px; object-fit: contain; opacity: 0.8; z-index: 1;" />` : ''}
+          </div>
+          <div style="font-size: 11px; font-weight: 600; color: ${theadCol}; text-transform: uppercase; letter-spacing: 1px;">Authorized Signatory</div>
+        </div>
+      </div>
+      ` : ''}
 
       <!-- FOOTER -->
       <div style="margin-top: 60px; padding-top: 20px; border-top: 1px solid ${borderCol}; font-size: 11px; color: ${theadCol}; text-align: center; page-break-inside: avoid;">
