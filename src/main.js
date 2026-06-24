@@ -430,9 +430,9 @@ function renderSearchTable() {
 
     // Determine unit price
     let unitPrice = 0;
-    if (tier === 'wholesale50') unitPrice = product.ws50 || product.tier1 || 0;
-    if (tier === 'wholesale40') unitPrice = product.ws40 || product.tier2 || 0;
-    if (tier === 'wholesale30') unitPrice = product.ws30 || product.tier3 || 0;
+    if (tier === 'wholesale50') unitPrice = product.wholesale50 || 0;
+    if (tier === 'wholesale40') unitPrice = product.wholesale40 || 0;
+    if (tier === 'wholesale30') unitPrice = product.wholesale30 || 0;
 
     // Check if item already exists in cart
     const existing = orderItems.findIndex(i => i.product.styleCode === product.styleCode && i.tier === tier);

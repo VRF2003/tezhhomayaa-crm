@@ -142,6 +142,11 @@ export async function initGlobalSearch() {
       const detail = { product: activeQuickViewProduct, tier, sizes };
       document.dispatchEvent(new CustomEvent('search:add-to-order', { detail }));
       overlay.classList.add('hidden');
+      
+      input.value = '';
+      clearBtn.classList.add('hidden');
+      dropdown.classList.add('hidden');
+      dropdown.innerHTML = '';
     }
   });
 }
@@ -203,7 +208,7 @@ function renderDropdown(results, terms) {
             ${hlColour ? `| Colour: ${hlColour}` : ''}
           </div>
           <div class="search-dropdown-meta" style="color: var(--accent-gold); margin-top:2px;">
-            $${parseFloat(p.tier1 || p.ws50 || 0).toFixed(2)}
+            $${parseFloat(p.wholesale50 || 0).toFixed(2)}
           </div>
         </div>
       </div>
@@ -224,6 +229,12 @@ function renderDropdown(results, terms) {
         document.dispatchEvent(new CustomEvent('search:add-to-order', { 
           detail: { product: prod, tier: 'wholesale50', sizes: defaultSizes }
         }));
+        
+        const inputEl = document.getElementById('global-search-input');
+        const clearBtnEl = document.getElementById('global-search-clear');
+        if (inputEl) inputEl.value = '';
+        if (clearBtnEl) clearBtnEl.classList.add('hidden');
+        dropdown.innerHTML = '';
       } else {
         // Click => Open Modal
         openQuickViewModal(prod);
@@ -238,9 +249,9 @@ function updateQuickViewPrice() {
   if (!activeQuickViewProduct) return;
   const tierVal = document.getElementById('quickview-tier')?.value || 'wholesale50';
   let price = 0;
-  if (tierVal === 'wholesale50') price = activeQuickViewProduct.ws50 || activeQuickViewProduct.tier1 || 0;
-  if (tierVal === 'wholesale40') price = activeQuickViewProduct.ws40 || activeQuickViewProduct.tier2 || 0;
-  if (tierVal === 'wholesale30') price = activeQuickViewProduct.ws30 || activeQuickViewProduct.tier3 || 0;
+  if (tierVal === 'wholesale50') price = activeQuickViewProduct.wholesale50 || 0;
+  if (tierVal === 'wholesale40') price = activeQuickViewProduct.wholesale40 || 0;
+  if (tierVal === 'wholesale30') price = activeQuickViewProduct.wholesale30 || 0;
   
   const priceEl = document.getElementById('qv-price-display');
   if (priceEl) priceEl.innerText = `$${parseFloat(price).toFixed(2)}`;
@@ -273,7 +284,8 @@ function openQuickViewModal(prod) {
       <div style="margin-bottom: 4px;"><strong>Category:</strong> ${prod.category || 'N/A'}</div>
       <div style="margin-bottom: 4px;"><strong>Fabric:</strong> ${prod.fabric || 'N/A'}</div>
       <div style="margin-bottom: 12px; font-size: 1.1rem; border-top: 1px solid var(--border-color); padding-top: 8px; margin-top: 8px;">
-        <strong>Price:</strong> <span id="qv-price-display" style="color: var(--accent-gold); font-weight:600;">$0.00</span>
+        <strong>Selling Price:</strong> <span style="color: var(--text-primary); font-weight:600; margin-right:1rem;">$${parseFloat(prod.retailPrice || 0).toFixed(2)}</span>
+        <strong>Wholesale Price:</strong> <span id="qv-price-display" style="color: var(--accent-gold); font-weight:600;">$0.00</span>
       </div>
     </div>
   `;
