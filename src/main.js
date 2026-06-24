@@ -322,10 +322,10 @@ async function init() {
 
 // ── Dropdowns ──────────────────────────────────────────────
 function populateDropdowns() {
-  if (filterCat)    getUniqueValues('category').forEach(v => filterCat.add(new Option(v, v)));
-  if (filterDesign) getUniqueValues('design').forEach(v => filterDesign.add(new Option(v, v)));
-  if (filterColor)  getUniqueValues('colour').forEach(v => filterColor.add(new Option(v, v)));
-  if (filterStyle)  getUniqueValues('styleCode').forEach(v => filterStyle.add(new Option(v, v)));
+  if (filterCat)    { filterCat.innerHTML = '<option value="">All</option>'; getUniqueValues('category').forEach(v => filterCat.add(new Option(v, v))); }
+  if (filterDesign) { filterDesign.innerHTML = '<option value="">All</option>'; getUniqueValues('design').forEach(v => filterDesign.add(new Option(v, v))); }
+  if (filterColor)  { filterColor.innerHTML = '<option value="">All</option>'; getUniqueValues('colour').forEach(v => filterColor.add(new Option(v, v))); }
+  if (filterStyle)  { filterStyle.innerHTML = '<option value="">All</option>'; getUniqueValues('styleCode').forEach(v => filterStyle.add(new Option(v, v))); }
 
   if (builderCatProduct) {
     builderCatProduct.innerHTML = '<option value="">Select Product...</option>';
