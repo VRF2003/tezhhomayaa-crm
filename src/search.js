@@ -222,12 +222,6 @@ function renderDropdown(results, terms) {
     el.addEventListener('click', (e) => {
       const prod = results[idx];
       dropdown.classList.add('hidden');
-      dropdown.innerHTML = '';
-      
-      const inputEl = document.getElementById('global-search-input');
-      const clearBtnEl = document.getElementById('global-search-clear');
-      if (inputEl) inputEl.value = '';
-      if (clearBtnEl) clearBtnEl.classList.add('hidden');
       
       if (e.shiftKey) {
         // Shift+Click => Add directly with default tier and 0 sizes
@@ -235,6 +229,12 @@ function renderDropdown(results, terms) {
         document.dispatchEvent(new CustomEvent('search:add-to-order', { 
           detail: { product: prod, tier: 'wholesale50', sizes: defaultSizes }
         }));
+        
+        dropdown.innerHTML = '';
+        const inputEl = document.getElementById('global-search-input');
+        const clearBtnEl = document.getElementById('global-search-clear');
+        if (inputEl) inputEl.value = '';
+        if (clearBtnEl) clearBtnEl.classList.add('hidden');
       } else {
         // Click => Open Modal
         openQuickViewModal(prod);
