@@ -1,6 +1,6 @@
 import './style.css';
 import { products, getUniqueValues, loadProducts } from './data.js';
-import { db_quotes, db_buyers, db_settings, db_products, db_admin, login, logout, getToken, getCurrentUser } from './db.js';
+import { openDB, db_quotes, db_buyers, db_settings, executeMigrations, exportDatabase, importDatabase, db_products } from './db.js';
 import { saveQuote, getReport, deleteQuote, updateQuoteFields, archiveQuote, restoreQuote, duplicateQuote, archiveBuyer, deleteBuyer, updateBuyerFields } from './crm.js';
 import { testGoogleSheetsConnection, syncOrderToSheets } from './gsheets.js';
 import { generateLuxuryPDF } from './pdf.js';
@@ -327,6 +327,8 @@ async function saveSettings() {
 
 // ── Init ───────────────────────────────────────────────────
 async function init() {
+  await openDB();
+  await executeMigrations();
   await loadSettings();
   await loadProducts();
   populateDropdowns();
@@ -2403,96 +2405,5 @@ document.addEventListener('keydown', (e) => {
   }
 });
 
-// ── Admin Panel ──────────────────────────────────────────────
-async function renderAdminView() {
-  if (!document.getElementById('admin-view').classList.contains('active')) return;
-  
-  if (hasPermission('users', 'view')) {
-    await renderUsers();
-    await renderRoles();
-    await renderLogs();
-  } else {
-    showToast('You do not have permission to view Admin settings', true);
-  }
-}
-
-async function renderUsers() {
-  const tbody = document.getElementById('admin-users-tbody');
-  if (!tbody) return;
-  try {
-    const users = await db_admin.getUsers();
-    tbody.innerHTML = users.map(u => `
-      <tr>
-        <td>${u.name}</td>
-        <td>${u.email}</td>
-        <td>${u.roles || 'None'}</td>
-        <td><span class="badge ${u.status === 'Active' ? 'badge-success' : 'badge-danger'}">${u.status}</span></td>
-        <td>${u.last_login || 'Never'}</td>
-        <td data-permission="users:edit">
-          <button class="icon-btn edit-user-btn" data-id="${u.id}">✎</button>
-          <button class="icon-btn del-user-btn" data-id="${u.id}" style="color:#e04040">✕</button>
-        </td>
-      </tr>
-    `).join('');
-    
-    tbody.querySelectorAll('.del-user-btn').forEach(btn => btn.onclick = async (e) => {
-      if(confirm('Delete user?')) {
-        await db_admin.deleteUser(e.target.dataset.id);
-        renderUsers();
-      }
-    });
-    applyRBAC();
-  } catch (err) {
-    console.error(err);
-  }
-}
-
-async function renderRoles() {
-  const tbody = document.getElementById('admin-roles-tbody');
-  if (!tbody) return;
-  try {
-    const roles = await db_admin.getRoles();
-    tbody.innerHTML = roles.map(r => `
-      <tr>
-        <td>${r.name}</td>
-        <td>${r.description}</td>
-        <td data-permission="users:edit">
-          ${r.is_system === 1 ? '<span style="color:#888; font-size:0.8rem">System Role</span>' : `<button class="icon-btn del-role-btn" data-id="${r.id}" style="color:#e04040">✕</button>`}
-        </td>
-      </tr>
-    `).join('');
-    
-    tbody.querySelectorAll('.del-role-btn').forEach(btn => btn.onclick = async (e) => {
-      if(confirm('Delete role?')) {
-        await db_admin.deleteRole(e.target.dataset.id);
-        renderRoles();
-      }
-    });
-    applyRBAC();
-  } catch (err) {
-    console.error(err);
-  }
-}
-
-async function renderLogs() {
-  const tbody = document.getElementById('admin-logs-tbody');
-  if (!tbody) return;
-  try {
-    const logs = await db_admin.getLogs();
-    tbody.innerHTML = logs.map(l => `
-      <tr>
-        <td>${new Date(l.timestamp).toLocaleString()}</td>
-        <td>${l.user_name}</td>
-        <td><strong>${l.action}</strong></td>
-        <td>${l.target_table} ${l.target_id ? `(#${l.target_id})` : ''}</td>
-      </tr>
-    `).join('');
-  } catch (err) {
-    console.error(err);
-  }
-}
-
-import { setupAuth, hasPermission, applyRBAC } from './auth.js';
-
 // ── Run ────────────────────────────────────────────────────
-setupAuth(init);
+init();

@@ -1,157 +1,280 @@
 // ============================================================
-// db.js — REST API wrapper with JWT Authentication
+// db.js — IndexedDB wrapper for Tezhhomayaa Wholesale CRM
 // ============================================================
 
-const API_BASE = '/api/order_builder.php'; // Proxied or direct
-const ADMIN_API = '/api/admin_api.php';
-const AUTH_API = '/api/auth.php';
+const DB_NAME = 'TezhhomayaaCRM';
+const DB_VERSION = 3;
 
-// Helper to get token
-export function getToken() {
-  return localStorage.getItem('auth_token');
+let db = null;
+let dbPromise = null;
+
+export function openDB() {
+  if (dbPromise) return dbPromise;
+
+  dbPromise = new Promise((resolve, reject) => {
+    const req = indexedDB.open(DB_NAME, DB_VERSION);
+
+    req.onupgradeneeded = (e) => {
+      const database = e.target.result;
+
+      // ── quotes store ──────────────────────────────────────
+      if (!database.objectStoreNames.contains('quotes')) {
+        const qStore = database.createObjectStore('quotes', {
+          keyPath: 'id', autoIncrement: true
+        });
+        qStore.createIndex('quoteNumber', 'quoteNumber', { unique: true });
+        qStore.createIndex('date',        'date',        { unique: false });
+        qStore.createIndex('buyerName',   'buyerName',   { unique: false });
+        qStore.createIndex('country',     'country',     { unique: false });
+      }
+
+      // ── buyers store ─────────────────────────────────────
+      if (!database.objectStoreNames.contains('buyers')) {
+        const bStore = database.createObjectStore('buyers', {
+          keyPath: 'id', autoIncrement: true
+        });
+        bStore.createIndex('name',    'name',    { unique: false });
+        bStore.createIndex('company', 'company', { unique: false });
+        bStore.createIndex('country', 'country', { unique: false });
+      }
+
+      // ── settings store ───────────────────────────────────
+      if (!database.objectStoreNames.contains('settings')) {
+        database.createObjectStore('settings', { keyPath: 'id' });
+      }
+
+      // ── products store ───────────────────────────────────
+      if (!database.objectStoreNames.contains('products')) {
+        const pStore = database.createObjectStore('products', {
+          keyPath: 'id', autoIncrement: true
+        });
+        pStore.createIndex('styleCode', 'styleCode', { unique: true });
+        pStore.createIndex('category', 'category', { unique: false });
+      }
+    };
+
+    req.onsuccess = (e) => {
+      db = e.target.result;
+      
+      db.onclose = () => {
+        db = null;
+        dbPromise = null;
+      };
+      
+      db.onversionchange = () => {
+        db.close();
+        db = null;
+        dbPromise = null;
+      };
+      
+      resolve(db);
+    };
+
+    req.onerror = () => {
+      dbPromise = null;
+      reject(req.error);
+    };
+  });
+
+  return dbPromise;
 }
 
-// Helper to get current user object
-export function getCurrentUser() {
-  const u = localStorage.getItem('auth_user');
-  return u ? JSON.parse(u) : null;
-}
+// ── Generic helpers ─────────────────────────────────────────
 
-// Handle 401 Unauthorized globally
-function handleAuthError() {
-  localStorage.removeItem('auth_token');
-  localStorage.removeItem('auth_user');
-  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
-  const loginView = document.getElementById('login-view');
-  if (loginView) loginView.classList.add('active');
-}
-
-// Internal generic fetch wrapper
-async function apiRequest(endpoint, method = 'GET', data = null, id = null) {
-  let url = endpoint;
-  if (id !== null) url += `&id=${encodeURIComponent(id)}`;
-
-  const options = {
-    method,
-    headers: {
-      'Accept': 'application/json',
-      'Authorization': `Bearer ${getToken()}`
-    }
-  };
-
-  if (data) {
-    options.headers['Content-Type'] = 'application/json';
-    options.body = JSON.stringify(data);
-  }
-
+async function tx(storeName, mode = 'readonly') {
+  if (!db) await openDB();
   try {
-    const res = await fetch(url, options);
-    
-    // Check if it's returning HTML instead of JSON
-    const contentType = res.headers.get("content-type");
-    if (contentType && contentType.indexOf("application/json") === -1) {
-      throw new Error("Server did not return JSON. Ensure your PHP server is running.");
+    return db.transaction(storeName, mode).objectStore(storeName);
+  } catch (err) {
+    if (err.name === 'InvalidStateError' && err.message.includes('closing')) {
+      db = null;
+      dbPromise = null;
+      await openDB();
+      return db.transaction(storeName, mode).objectStore(storeName);
     }
-    
-    if (res.status === 401 || res.status === 403) {
-      const err = await res.json().catch(() => ({}));
-      if (res.status === 401) handleAuthError();
-      throw new Error(err.error || `HTTP error! status: ${res.status}`);
-    }
-
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({}));
-      throw new Error(err.error || `HTTP error! status: ${res.status}`);
-    }
-
-    const parsed = await res.json();
-    if (parsed && parsed.error) {
-      throw new Error(parsed.error);
-    }
-    return parsed;
-  } catch (e) {
-    console.error("API Request Failed:", e);
-    throw e;
+    throw err;
   }
 }
 
-// --- AUTHENTICATION ---
-export async function login(email, password) {
-  const options = {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ email, password })
-  };
-  const res = await fetch(AUTH_API, options);
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.error || 'Login failed');
-  
-  localStorage.setItem('auth_token', data.token);
-  localStorage.setItem('auth_user', JSON.stringify(data.user));
-  return data.user;
+function promisify(req) {
+  return new Promise((res, rej) => {
+    req.onsuccess = () => res(req.result);
+    req.onerror  = () => rej(req.error);
+  });
 }
 
-export function logout() {
-  handleAuthError();
+async function getAll(storeName) {
+  const store = await tx(storeName);
+  return promisify(store.getAll());
 }
 
-// --- PRODUCTS ---
-export const db_products = {
-  getAll: async () => await apiRequest(`${API_BASE}?resource=products`, 'GET') || [],
-  get: async (id) => await apiRequest(`${API_BASE}?resource=products`, 'GET', null, id),
-  getByStyleCode: async (code) => await apiRequest(`${API_BASE}?resource=products`, 'GET', null, code),
-  put: async (p) => { await apiRequest(`${API_BASE}?resource=products`, 'PUT', p); },
-  delete: async (id) => { await apiRequest(`${API_BASE}?resource=products`, 'DELETE', null, id); }
-};
+async function getById(storeName, id) {
+  const store = await tx(storeName);
+  return promisify(store.get(id));
+}
 
-// --- QUOTES ---
+async function add(storeName, record) {
+  const store = await tx(storeName, 'readwrite');
+  return promisify(store.add(record));
+}
+
+async function put(storeName, record) {
+  const store = await tx(storeName, 'readwrite');
+  return promisify(store.put(record));
+}
+
+async function getByIndex(storeName, indexName, value) {
+  const store = await tx(storeName);
+  return promisify(store.index(indexName).getAll(value));
+}
+
+// ── Public API ───────────────────────────────────────────────
+
 export const db_quotes = {
-  add: async (q) => { await apiRequest(`${API_BASE}?resource=quotes`, 'POST', q); },
-  getAll: async () => await apiRequest(`${API_BASE}?resource=quotes`, 'GET') || [],
-  getById: async (id) => await apiRequest(`${API_BASE}?resource=quotes`, 'GET', null, id),
-  getByBuyer: async (bName) => {
-    const all = await apiRequest(`${API_BASE}?resource=quotes`, 'GET');
-    return (all || []).filter(q => q.buyerName === bName);
+  add:    (q)  => add('quotes', q),
+  getAll: ()   => getAll('quotes'),
+  getById:(id) => getById('quotes', id),
+  getByBuyer: (name) => getByIndex('quotes', 'buyerName', name),
+  delete: async (id) => {
+    const store = await tx('quotes', 'readwrite');
+    return promisify(store.delete(id));
   },
-  put: async (q) => { await apiRequest(`${API_BASE}?resource=quotes`, 'PUT', q, q.id); },
-  delete: async (id) => { await apiRequest(`${API_BASE}?resource=quotes`, 'DELETE', null, id); }
+  put:    (q)  => put('quotes', q),
 };
 
-// --- BUYERS ---
 export const db_buyers = {
-  add: async (b) => { await apiRequest(`${API_BASE}?resource=buyers`, 'POST', b); },
-  getAll: async () => await apiRequest(`${API_BASE}?resource=buyers`, 'GET') || [],
-  getById: async (id) => await apiRequest(`${API_BASE}?resource=buyers`, 'GET', null, id),
-  put: async (b) => { await apiRequest(`${API_BASE}?resource=buyers`, 'PUT', b, b.id); },
-  delete: async (id) => { await apiRequest(`${API_BASE}?resource=buyers`, 'DELETE', null, id); }
+  add:    (b) => add('buyers', b),
+  put:    (b) => put('buyers', b),
+  getAll: ()  => getAll('buyers'),
+  getById:(id) => getById('buyers', id),
+  getByName: (name) => getByIndex('buyers', 'name', name),
+  delete: async (id) => {
+    const store = await tx('buyers', 'readwrite');
+    return promisify(store.delete(id));
+  },
 };
 
-// --- SETTINGS ---
 export const db_settings = {
-  get: async () => {
-    const s = await apiRequest(`${API_BASE}?resource=settings`, 'GET');
-    return Array.isArray(s) ? (s[0] || {}) : s;
-  },
-  put: async (s) => { await apiRequest(`${API_BASE}?resource=settings`, 'PUT', s); }
+  get: () => getById('settings', 'pdf_settings'),
+  put: (settings) => put('settings', { id: 'pdf_settings', ...settings }),
 };
 
-// --- ADMIN (USERS, ROLES, LOGS) ---
-export const db_admin = {
-  getUsers: async () => await apiRequest(`${ADMIN_API}?resource=users`, 'GET') || [],
-  saveUser: async (u) => {
-    if (u.id) return await apiRequest(`${ADMIN_API}?resource=users`, 'PUT', u, u.id);
-    else return await apiRequest(`${ADMIN_API}?resource=users`, 'POST', u);
+export const db_products = {
+  add:    (p) => add('products', p),
+  put:    (p) => put('products', p),
+  getAll: ()  => getAll('products'),
+  getById:(id) => getById('products', id),
+  getByStyleCode: (code) => getByIndex('products', 'styleCode', code),
+  delete: async (id) => {
+    const store = await tx('products', 'readwrite');
+    return promisify(store.delete(id));
   },
-  deleteUser: async (id) => { await apiRequest(`${ADMIN_API}?resource=users`, 'DELETE', null, id); },
+};
 
-  getRoles: async () => await apiRequest(`${ADMIN_API}?resource=roles`, 'GET') || [],
-  saveRole: async (r) => {
-    if (r.id) return await apiRequest(`${ADMIN_API}?resource=roles`, 'PUT', r, r.id);
-    else return await apiRequest(`${ADMIN_API}?resource=roles`, 'POST', r);
-  },
-  deleteRole: async (id) => { await apiRequest(`${ADMIN_API}?resource=roles`, 'DELETE', null, id); },
+// ── Database Migration Engine ──────────────────────────────
+const CURRENT_MIGRATION_VERSION = 1;
 
-  getPermissions: async () => await apiRequest(`${ADMIN_API}?resource=permissions`, 'GET') || [],
+export async function executeMigrations() {
+  const s = await db_settings.get() || {};
+  const currentVer = s.migrationVersion || 0;
+
+  if (currentVer >= CURRENT_MIGRATION_VERSION) return false;
+
+  console.log(`Migrating database from version \${currentVer} to \${CURRENT_MIGRATION_VERSION}...`);
+
+  // Migration 1: Add default fields to Quotes and Buyers
+  if (currentVer < 1) {
+    const allQuotes = await db_quotes.getAll();
+    for (let q of allQuotes) {
+      let updated = false;
+      if (!q.status) { q.status = 'Draft'; updated = true; }
+      if (!q.phone) { q.phone = ''; updated = true; }
+      if (!q.email) { q.email = ''; updated = true; }
+      if (!q.whatsapp) { q.whatsapp = ''; updated = true; }
+      if (!q.buyerType) { q.buyerType = ''; updated = true; }
+      if (updated) await db_quotes.put(q);
+    }
+
+    const allBuyers = await db_buyers.getAll();
+    for (let b of allBuyers) {
+      let updated = false;
+      if (!b.phone) { b.phone = ''; updated = true; }
+      if (!b.email) { b.email = ''; updated = true; }
+      if (!b.whatsapp) { b.whatsapp = ''; updated = true; }
+      if (!b.buyerType) { b.buyerType = ''; updated = true; }
+      if (updated) await db_buyers.put(b);
+    }
+  }
+
+  // Update migration version
+  s.migrationVersion = CURRENT_MIGRATION_VERSION;
+  await db_settings.put(s);
   
-  getLogs: async () => await apiRequest(`${ADMIN_API}?resource=audit_logs`, 'GET') || []
-};
+  // Dispatch event for UI
+  window.dispatchEvent(new CustomEvent('db-migrated', { detail: { version: CURRENT_MIGRATION_VERSION } }));
+  return true;
+}
+
+// ── Backup and Restore ─────────────────────────────────────
+
+export async function exportDatabase() {
+  const data = {
+    quotes: await db_quotes.getAll(),
+    buyers: await db_buyers.getAll(),
+    settings: await db_settings.get(),
+    products: await db_products.getAll()
+  };
+  
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `Tezhhomayaa_CRM_Backup_\${new Date().toISOString().split('T')[0]}.json`;
+  a.click();
+  
+  URL.revokeObjectURL(url);
+}
+
+export async function importDatabase(jsonData) {
+  try {
+    const data = JSON.parse(jsonData);
+    if (!data.quotes || !data.buyers) throw new Error("Invalid CRM Backup File");
+
+    // Clear existing data (within a new transaction for safety if possible, but clear each store is easiest)
+    const quoteStore = await tx('quotes', 'readwrite');
+    await promisify(quoteStore.clear());
+    const buyerStore = await tx('buyers', 'readwrite');
+    await promisify(buyerStore.clear());
+    const productStore = await tx('products', 'readwrite');
+    await promisify(productStore.clear());
+
+    // Import Quotes
+    for (const q of data.quotes) {
+      // Re-insert exactly as is
+      await db_quotes.add(q);
+    }
+    
+    // Import Buyers
+    for (const b of data.buyers) {
+      await db_buyers.add(b);
+    }
+    
+    // Import Products
+    if (data.products) {
+      for (const p of data.products) {
+        await db_products.add(p);
+      }
+    }
+    
+    // Import Settings
+    if (data.settings) {
+      await db_settings.put(data.settings);
+    }
+
+    return true;
+  } catch (err) {
+    console.error("Import failed:", err);
+    throw err;
+  }
+}
