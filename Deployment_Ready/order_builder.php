@@ -16,11 +16,26 @@ if ($_SERVER['REQUEST_METHOD'] == 'OPTIONS') {
     exit();
 }
 
-require_once 'db.php';
+require_once 'auth.php'; // Includes db.php automatically
 
 $request_method = $_SERVER['REQUEST_METHOD'];
 $resource = isset($_GET['resource']) ? $_GET['resource'] : '';
 $id = isset($_GET['id']) ? $_GET['id'] : null;
+
+// Require valid JWT session for all requests
+$user = require_auth();
+$action = ($request_method === 'GET') ? 'view' : 'edit';
+
+// Check permissions based on resource
+if ($resource === 'products') {
+    require_permission($pdo, $user['user_id'], 'products', $action);
+} elseif ($resource === 'quotes' || $resource === 'buyers') {
+    // Both use the same logical perm for quotes, but let's separate them if buyers are tracked separately.
+    // We didn't map a buyers API endpoint specifically yet, handleQuotes does quotes.
+    require_permission($pdo, $user['user_id'], 'quotes', $action);
+} elseif ($resource === 'settings') {
+    require_permission($pdo, $user['user_id'], 'settings', $action);
+}
 
 // Handle JSON input
 $input_data = json_decode(file_get_contents('php://input'), true);
@@ -91,6 +106,12 @@ function handleProducts($pdo, $method, $id, $data) {
             $data['status'] ?? 'Active',
             $data['image'] ?? null
         ]);
+        
+        global $user;
+        if (isset($user)) {
+            log_audit_action($pdo, $user['user_id'], 'save_product', 'products', $data['styleCode'] ?? '', ['name' => $data['productName'] ?? '']);
+        }
+        
         echo json_encode(["message" => "Product saved successfully"]);
     } elseif ($method == 'DELETE') {
         if ($id) {

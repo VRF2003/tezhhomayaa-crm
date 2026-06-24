@@ -21,13 +21,29 @@
     <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <title>Tezhhomayaa Wholesale CRM</title>
-    <script type="module" crossorigin src="/assets/index-CLMifuLU.js"></script>
+    <script type="module" crossorigin src="/assets/index-BRWEI_AR.js"></script>
     <link rel="stylesheet" crossorigin href="/assets/index-CLmb_YA_.css">
   </head>
   <body>
 
     <!-- Toast Notification -->
-    <div id="toast" class="toast" role="alert" aria-live="polite"></div>
+    <div id="toast" class="toast">Action successful!</div>
+
+  <!-- LOGIN VIEW -->
+  <div id="login-view" class="view" style="display:flex; justify-content:center; align-items:center; min-height:100vh; background:var(--bg-base); z-index:9999; position:fixed; top:0; left:0; width:100%;">
+    <div style="background:var(--bg-panel); padding:40px; border-radius:12px; border:1px solid var(--border-color); width:100%; max-width:400px; text-align:center;">
+      <h2 style="color:var(--text-primary); margin-bottom:10px; font-family:'Playfair Display', serif;">Tezhhomayaa</h2>
+      <p style="color:var(--text-secondary); margin-bottom:30px; font-size:0.9rem">Wholesale Buyer Portal Admin</p>
+      
+      <form id="login-form" style="display:flex; flex-direction:column; gap:15px">
+        <input type="email" id="login-email" placeholder="Email Address" required style="padding:12px; border-radius:6px; background:var(--bg-elevated); border:1px solid var(--border-color); color:var(--text-primary);">
+        <input type="password" id="login-password" placeholder="Password" required style="padding:12px; border-radius:6px; background:var(--bg-elevated); border:1px solid var(--border-color); color:var(--text-primary);">
+        <button type="submit" class="primary-btn" id="login-submit-btn" style="padding:12px; font-size:1rem; margin-top:10px;">Sign In</button>
+      </form>
+    </div>
+  </div>
+
+  <div class="app-layout" id="app-layout" style="display:none;">
 
     <div id="app" class="app-container">
 
@@ -77,9 +93,13 @@
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
             Reports
           </a></li>
-          <li><a class="nav-link" data-target="settings-view">
+          <li><a class="nav-link" data-target="settings-view" data-permission="settings:view">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-2 2 2 2 0 01-2-2v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 01-2-2 2 2 0 012-2h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 010-2.83 2 2 0 012.83 0l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 012-2 2 2 0 012 2v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 012 2 2 2 0 01-2 2h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
             Settings (Admin)
+          </a></li>
+          <li><a class="nav-link" data-target="admin-view" data-permission="users:view">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+            Admin Control
           </a></li>
         </ul>
 
@@ -751,6 +771,69 @@
           </div>
         </section>
 
+        <!-- ── ADMIN & RBAC VIEW ──────────────────────────────────────── -->
+        <section id="admin-view" class="view">
+          <div class="view-header">
+            <div>
+              <h2 class="view-title">Admin Control</h2>
+              <p class="view-subtitle" style="color:var(--text-secondary)">Manage Users, Roles, and System Security Logs</p>
+            </div>
+          </div>
+          
+          <div style="display:grid; grid-template-columns: 1fr; gap:20px;">
+            <!-- Users Panel -->
+            <div class="dash-panel">
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px">
+                <h3 class="dash-panel-title">Staff Users</h3>
+                <button id="admin-add-user-btn" class="primary-btn" data-permission="users:edit">Add User</button>
+              </div>
+              <div class="table-container">
+                <table class="data-table">
+                  <thead>
+                    <tr><th>Name</th><th>Email</th><th>Roles</th><th>Status</th><th>Last Login</th><th data-permission="users:edit">Actions</th></tr>
+                  </thead>
+                  <tbody id="admin-users-tbody">
+                    <!-- populated via js -->
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:20px;">
+              <!-- Roles Panel -->
+              <div class="dash-panel">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px">
+                  <h3 class="dash-panel-title">Security Roles</h3>
+                  <button id="admin-add-role-btn" class="primary-btn" data-permission="users:edit">Create Role</button>
+                </div>
+                <div class="table-container">
+                  <table class="data-table">
+                    <thead>
+                      <tr><th>Role Name</th><th>Description</th><th data-permission="users:edit">Actions</th></tr>
+                    </thead>
+                    <tbody id="admin-roles-tbody">
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              <!-- Audit Logs -->
+              <div class="dash-panel" style="max-height:400px; overflow-y:auto;">
+                <h3 class="dash-panel-title">Recent Audit Logs</h3>
+                <div class="table-container">
+                  <table class="data-table" style="font-size:0.8rem">
+                    <thead>
+                      <tr><th>Time</th><th>User</th><th>Action</th><th>Target</th></tr>
+                    </thead>
+                    <tbody id="admin-logs-tbody">
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
       </main>
     </div>
 
@@ -1020,5 +1103,6 @@
       </div>
     </div>
 
-  </body>
+    </div>
+</body>
 </html>
