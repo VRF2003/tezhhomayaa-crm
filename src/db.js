@@ -29,14 +29,26 @@ async function apiRequest(resource, method = 'GET', data = null, id = null) {
 
   try {
     const res = await fetch(url, options);
+    // If the server doesn't execute PHP (Vite dev server), it will return text/html.
+    const contentType = res.headers.get("content-type");
+    if (contentType && contentType.indexOf("application/json") === -1) {
+      throw new Error("Server did not return JSON. Ensure you are running this on a PHP server (like XAMPP or cPanel) and not the local Vite dev server.");
+    }
+    
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
-      throw new Error(err.error || `HTTP error! status: ${res.status}`);
+      throw new Error(err.error || err.message || err.details || `HTTP error! status: ${res.status}`);
     }
-    return await res.json();
+    
+    const parsed = await res.json();
+    if (parsed && parsed.error) {
+      throw new Error(parsed.error + (parsed.message ? `: ${parsed.message}` : ''));
+    }
+    
+    return parsed;
   } catch (e) {
     console.error("API Request Failed:", e);
-    return null;
+    throw e; // Propagate the error so the UI shows it
   }
 }
 
