@@ -42,7 +42,8 @@ export async function generateLuxuryPDF(quote, mode, settings, rates) {
   // Build Items HTML
   let itemsHtml = items.map((item, idx) => {
     const prod = item.product || {};
-    const imgStr = item.image ? `<img src="${item.image}" style="width:50px; height:50px; object-fit:cover; border-radius:4px;">` : `<div style="width:50px; height:50px; background:#f0f0f0; border-radius:4px; display:flex; align-items:center; justify-content:center; font-size:10px; color:#aaa">No Img</div>`;
+    const imageUrl = item.image || prod.image;
+    const imgStr = imageUrl ? `<img src="${imageUrl}" style="width:50px; height:50px; object-fit:cover; border-radius:4px;">` : `<div style="width:50px; height:50px; background:#f0f0f0; border-radius:4px; display:flex; align-items:center; justify-content:center; font-size:10px; color:#aaa">No Img</div>`;
     
     // Formatting the size matrix summary
     let sizesSummary = [];
