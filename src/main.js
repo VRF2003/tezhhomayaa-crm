@@ -1136,6 +1136,13 @@ window.printSavedQuote = async function(quote, mode) {
   }
 };
 
+document.getElementById('drawer-btn-client-pdf')?.addEventListener('click', () => {
+  if (currentOrderDrawerQuote) window.printSavedQuote(currentOrderDrawerQuote, 'client');
+});
+document.getElementById('drawer-btn-internal-pdf')?.addEventListener('click', () => {
+  if (currentOrderDrawerQuote) window.printSavedQuote(currentOrderDrawerQuote, 'internal');
+});
+
 // ── Load Into Builder from Order Drawer ─────────────────────
 function loadQuoteIntoBuilder(quote) {
   if (!quote || !quote.items || quote.items.length === 0) {
