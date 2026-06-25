@@ -236,6 +236,14 @@ async function loadSettings() {
     
     if (s.deliveryBuffer != null) document.getElementById('set-delivery-buffer').value = s.deliveryBuffer;
     
+    // Factory Calendar
+    if (s.factoryCalendar) {
+      document.querySelectorAll('.set-off-day').forEach(cb => {
+        cb.checked = s.factoryCalendar.weeklyOffDays?.includes(parseInt(cb.value));
+      });
+      document.getElementById('set-holidays').value = (s.factoryCalendar.holidays || []).join(', ');
+    }
+
     // Silhouette MOQs & Lead Times
     if (!pdfSettings.silhouetteMoqs) pdfSettings.silhouetteMoqs = {};
     if (!pdfSettings.silhouetteLeadTimes) pdfSettings.silhouetteLeadTimes = {};
@@ -346,6 +354,17 @@ async function saveSettings() {
     s.optHideMargin = document.getElementById('set-opt-hide-margin').checked;
     s.gsheetUrl = document.getElementById('set-gsheet-url').value;
     s.gsheetAutoSync = document.getElementById('set-gsheet-autosync').checked;
+    
+    const offDaysNodes = document.querySelectorAll('.set-off-day:checked');
+    const offDays = Array.from(offDaysNodes).map(n => parseInt(n.value));
+    
+    const holidaysRaw = document.getElementById('set-holidays').value || '';
+    const holidays = holidaysRaw.split(',').map(d => d.trim()).filter(d => d.match(/^\d{4}-\d{2}-\d{2}$/));
+    
+    s.factoryCalendar = {
+      weeklyOffDays: offDays,
+      holidays: holidays
+    };
 
     const logoF = document.getElementById('set-logo').files[0];
     const wmF = document.getElementById('set-watermark').files[0];
@@ -1191,6 +1210,8 @@ function openQuoteEditModal(quote) {
       const qeFinalCommit = document.getElementById('qe-final-commit');
       const qeOverrideDays = document.getElementById('qe-override-days');
       const qeOverrideReason = document.getElementById('qe-override-reason');
+      const qeProdStatus = document.getElementById('qe-production-status');
+      const qeProdNote = document.getElementById('qe-production-note');
 
       if (qePriority) qePriority.value = quote.production.priority || 'Normal';
       if (qeQueueWaiting) qeQueueWaiting.textContent = `${quote.production.queueWaiting || 0} Days`;
@@ -1199,6 +1220,8 @@ function openQuoteEditModal(quote) {
       
       if (qeOverrideDays) qeOverrideDays.value = quote.production.manualOverride || '';
       if (qeOverrideReason) qeOverrideReason.value = quote.production.overrideReason || '';
+      if (qeProdStatus) qeProdStatus.value = quote.production.productionStatus || 'Scheduled';
+      if (qeProdNote) qeProdNote.value = ''; // Reset note field
     } else {
       prodPanel.style.display = 'none';
     }
@@ -1227,6 +1250,8 @@ function openQuoteEditModal(quote) {
       const qePriority = document.getElementById('qe-priority')?.value;
       const overrideVal = document.getElementById('qe-override-days')?.value;
       const overrideReason = document.getElementById('qe-override-reason')?.value;
+      const prodStatus = document.getElementById('qe-production-status')?.value;
+      const prodNote = document.getElementById('qe-production-note')?.value?.trim();
       
       if (overrideVal && !overrideReason) {
         showToast('Please provide a reason for the manual override.', true);
@@ -1237,6 +1262,15 @@ function openQuoteEditModal(quote) {
       fields.production.priority = qePriority || 'Normal';
       fields.production.manualOverride = overrideVal ? Number(overrideVal) : null;
       fields.production.overrideReason = overrideReason || '';
+      if (prodStatus) fields.production.productionStatus = prodStatus;
+      
+      if (prodNote) {
+        if (!fields.production.productionNotes) fields.production.productionNotes = [];
+        fields.production.productionNotes.push({
+          text: prodNote,
+          timestamp: new Date().toISOString()
+        });
+      }
     }
 
     try {
@@ -2557,53 +2591,161 @@ async function renderProductionDashboard() {
   const r = await getReport();
   const confirmedOrders = r.allQuotes.filter(q => q.status === 'Confirmed' && !q.archived);
   
+  // KPI Calculations
   const totalReservedDays = confirmedOrders.reduce((sum, q) => sum + (q.production?.productionDays || 0), 0);
+  const lateOrders = confirmedOrders.filter(q => {
+    if (!q.production?.expectedFinishDate) return false;
+    const finish = new Date(q.production.expectedFinishDate);
+    const commit = new Date(q.production.confirmedAt || q.date);
+    commit.setDate(commit.getDate() + (q.production.finalCommitment || 0));
+    return finish > commit;
+  }).length;
   
-  const resDaysEl = document.getElementById('prod-reserved-days');
-  if(resDaysEl) resDaysEl.textContent = totalReservedDays;
-  
-  const qCountEl = document.getElementById('prod-queue-count');
-  if(qCountEl) qCountEl.textContent = confirmedOrders.length;
-  
-  // Calculate next available date (today + totalReservedDays)
+  const inProd = confirmedOrders.filter(q => ['Cutting','Printing','Embroidery','Stitching','QC'].includes(q.production?.productionStatus)).length;
+  const waiting = confirmedOrders.filter(q => ['Waiting','Scheduled'].includes(q.production?.productionStatus)).length;
+
   const nextDate = new Date();
   nextDate.setDate(nextDate.getDate() + totalReservedDays);
-  const nxtEl = document.getElementById('prod-next-avail');
-  if (nxtEl) nxtEl.textContent = formatDate(nextDate.toISOString());
+
+  const kpisHtml = `
+    <div class="kpi-card"><h4>Active Orders</h4><div class="kpi-value">${confirmedOrders.length}</div></div>
+    <div class="kpi-card"><h4>Total Reserved Days</h4><div class="kpi-value">${totalReservedDays}</div></div>
+    <div class="kpi-card"><h4>In Production</h4><div class="kpi-value">${inProd}</div></div>
+    <div class="kpi-card"><h4>Waiting</h4><div class="kpi-value">${waiting}</div></div>
+    <div class="kpi-card"><h4>Late Orders</h4><div class="kpi-value" style="color:var(--accent-red)">${lateOrders}</div></div>
+    <div class="kpi-card"><h4>Next Slot</h4><div class="kpi-value" style="font-size:1.1rem">${formatDate(nextDate.toISOString())}</div></div>
+  `;
+  const kpiEl = document.getElementById('production-kpis');
+  if (kpiEl) kpiEl.innerHTML = kpisHtml;
 
   renderProductionQueue(confirmedOrders);
 }
 
 function renderProductionQueue(confirmedOrders) {
-  const tbody = document.getElementById('production-queue-tbody');
-  if (!tbody) return;
+  const tbody = document.getElementById('production-table-body');
+  const timeline = document.getElementById('production-timeline-container');
+  if (!tbody || !timeline) return;
 
-  // Sort queue by Priority first (desc), then Confirmation Date (asc)
+  const searchEl = document.getElementById('production-search');
+  const prioEl = document.getElementById('production-filter-priority');
+  const statEl = document.getElementById('production-filter-status');
+  
+  const searchQ = (searchEl?.value || '').toLowerCase();
+  const filterPrio = prioEl?.value || '';
+  const filterStat = statEl?.value || '';
+
+  // Sort queue by Manual Sort Index first, then Priority (desc), then Confirmation Date (asc)
   const priorityScore = { 'VIP': 4, 'Urgent': 3, 'Priority': 2, 'Normal': 1 };
   const getScore = (q) => priorityScore[q.production?.priority || 'Normal'] || 1;
   const getConfirmationDate = (q) => q.production?.confirmedAt || q.date;
 
-  const sortedQueue = [...confirmedOrders].sort((a, b) => {
+  let sortedQueue = [...confirmedOrders].sort((a, b) => {
+    const msA = a.production?.manualSortIndex;
+    const msB = b.production?.manualSortIndex;
+    if (msA != null && msB != null) return msA - msB;
+    if (msA != null) return -1;
+    if (msB != null) return 1;
+
     const scoreA = getScore(a);
     const scoreB = getScore(b);
     if (scoreA !== scoreB) return scoreB - scoreA;
     return new Date(getConfirmationDate(a)) - new Date(getConfirmationDate(b));
   });
 
+  // Filter
+  sortedQueue = sortedQueue.filter(q => {
+    const textMatch = q.quoteNumber.toLowerCase().includes(searchQ) || q.buyerName.toLowerCase().includes(searchQ);
+    const prioMatch = !filterPrio || q.production?.priority === filterPrio;
+    const statMatch = !filterStat || q.production?.productionStatus === filterStat;
+    return textMatch && prioMatch && statMatch;
+  });
+
+  // ── Render Timeline ──
+  timeline.innerHTML = sortedQueue.length === 0 ? '<div style="color:var(--text-secondary); text-align:center; padding: 20px;">No active orders match filters.</div>' : '';
+  
+  let currentAccumulatedDays = 0;
+  
+  sortedQueue.forEach((q, idx) => {
+    const p = q.production || {};
+    const wait = p.queueWaiting || 0;
+    const prod = p.productionDays || 0;
+    const status = p.productionStatus || 'Scheduled';
+    const prio = (p.priority || 'Normal').toLowerCase();
+    
+    const row = document.createElement('div');
+    row.className = `timeline-row priority-${prio}`;
+    row.draggable = true;
+    row.dataset.id = q.id;
+    row.dataset.index = idx;
+    
+    // Label
+    const label = document.createElement('div');
+    label.className = 'timeline-label';
+    label.innerHTML = `<span>${q.quoteNumber}</span><small>${q.buyerName}</small>`;
+    
+    // Track
+    const track = document.createElement('div');
+    track.className = 'timeline-track';
+    
+    // We scale based on total max days (e.g., 60 days = 100%)
+    const maxScaleDays = 60; 
+    
+    const waitWidth = Math.min(100, (wait / maxScaleDays) * 100);
+    const prodWidth = Math.min(100, (prod / maxScaleDays) * 100);
+    
+    const waitBar = document.createElement('div');
+    waitBar.className = 'timeline-bar timeline-waiting';
+    waitBar.style.width = `${waitWidth}%`;
+    waitBar.style.left = '0';
+    
+    const prodBar = document.createElement('div');
+    prodBar.className = `timeline-bar bar-${status === 'Completed' ? 'completed' : prio}`;
+    prodBar.style.width = `${prodWidth}%`;
+    prodBar.style.left = `${waitWidth}%`;
+    prodBar.textContent = `${prod}d`;
+    
+    track.appendChild(waitBar);
+    track.appendChild(prodBar);
+    
+    row.appendChild(label);
+    row.appendChild(track);
+    
+    // Drag events
+    row.addEventListener('dragstart', (e) => {
+      row.classList.add('dragging');
+      e.dataTransfer.setData('text/plain', idx);
+    });
+    row.addEventListener('dragend', () => {
+      row.classList.remove('dragging');
+    });
+    row.addEventListener('dragover', e => e.preventDefault());
+    row.addEventListener('drop', async (e) => {
+      e.preventDefault();
+      const draggedIdx = parseInt(e.dataTransfer.getData('text/plain'));
+      const dropIdx = idx;
+      if (draggedIdx !== dropIdx) {
+        await handleManualReorder(sortedQueue, draggedIdx, dropIdx);
+      }
+    });
+
+    timeline.appendChild(row);
+  });
+
+  // ── Render Table ──
   tbody.innerHTML = sortedQueue.length === 0
-    ? `<tr><td colspan="9" class="empty-state">Queue is empty. Confirm orders to build queue.</td></tr>`
-    : sortedQueue.map((q, idx) => `
+    ? `<tr><td colspan="9" class="empty-state">Queue is empty.</td></tr>`
+    : sortedQueue.map(q => `
       <tr data-id="${q.id}">
         <td style="color:var(--accent-gold); font-family:monospace">${q.quoteNumber}</td>
         <td style="font-weight:500">${q.buyerName}</td>
-        <td>${formatDate(q.production?.confirmedAt || q.date)}</td>
-        <td><span class="status-badge" style="background: var(--bg-card); color: var(--text-dark); border: 1px solid var(--border-light)">${q.production?.priority || 'Normal'}</span></td>
-        <td>${q.production?.queueWaiting || 0} Days</td>
-        <td>${q.production?.productionDays || 0} Days</td>
-        <td>${q.production?.bufferDays || 0} Days</td>
+        <td><span class="status-badge bar-${(q.production?.priority || 'Normal').toLowerCase()}">${q.production?.priority || 'Normal'}</span></td>
+        <td><span class="status-badge ${q.production?.productionStatus?.toLowerCase().replace(' ', '-')}">${q.production?.productionStatus || 'Scheduled'}</span></td>
+        <td>${q.production?.expectedStartDate ? formatDate(q.production.expectedStartDate) : '—'}</td>
+        <td>${q.production?.expectedFinishDate ? formatDate(q.production.expectedFinishDate) : '—'}</td>
+        <td>${q.production?.queueWaiting || 0}</td>
         <td style="font-weight:700; color:var(--primary)">${q.production?.finalCommitment || 0} Days</td>
         <td class="actions-col">
-          <button class="action-btn action-btn--edit" data-action="open-prod-quote" data-id="${q.id}" title="Edit Order">✏️</button>
+          <button class="action-btn action-btn--edit" data-action="open-prod-quote" data-id="${q.id}" title="Edit Order Status">✏️</button>
         </td>
       </tr>`).join('');
 
@@ -2619,10 +2761,44 @@ function renderProductionQueue(confirmedOrders) {
              renderProductionDashboard();
          });
       } else {
-         openQuoteEditor(quote);
+         openQuoteEditModal(quote); // Use existing edit modal which now has status fields
       }
     }
   };
+
+  // Bind filter events if not already bound
+  if (!searchEl.dataset.bound) {
+    searchEl.dataset.bound = "true";
+    searchEl.addEventListener('input', () => renderProductionQueue(confirmedOrders));
+    prioEl.addEventListener('change', () => renderProductionQueue(confirmedOrders));
+    statEl.addEventListener('change', () => renderProductionQueue(confirmedOrders));
+  }
+}
+
+async function handleManualReorder(sortedQueue, draggedIdx, dropIdx) {
+  // Move item in array
+  const item = sortedQueue.splice(draggedIdx, 1)[0];
+  sortedQueue.splice(dropIdx, 0, item);
+  
+  // Assign manualSortIndex sequentially
+  for (let i = 0; i < sortedQueue.length; i++) {
+    const q = sortedQueue[i];
+    q.production.manualSortIndex = i;
+    
+    // Audit Log
+    if (!q.production.auditLog) q.production.auditLog = [];
+    q.production.auditLog.push({
+      action: 'Manual Sort Reorder',
+      timestamp: new Date().toISOString(),
+      details: `Reordered to position ${i}`
+    });
+    
+    await db_quotes.put(q);
+  }
+  
+  showToast('Queue successfully reordered. Recalculating timeline...');
+  await recalculateProductionQueue();
+  renderProductionDashboard();
 }
 
 // ── Run ────────────────────────────────────────────────────

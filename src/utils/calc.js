@@ -174,8 +174,15 @@ export function calculateQueueWaiting(targetQuote, allQuotes) {
     q.id !== targetQuote.id // Exclude self
   );
 
-  // Sort queue by Priority first (desc), then Confirmation Date (asc)
+  // Sort queue by Manual Sort Index first, then Priority (desc), then Confirmation Date (asc)
   confirmedQueue.sort((a, b) => {
+    const msA = a.production?.manualSortIndex;
+    const msB = b.production?.manualSortIndex;
+    
+    if (msA != null && msB != null) return msA - msB;
+    if (msA != null) return -1;
+    if (msB != null) return 1;
+
     const scoreA = getScore(a);
     const scoreB = getScore(b);
     if (scoreA !== scoreB) {
@@ -212,4 +219,43 @@ export function calcFinalCommitment(productionDays, queueWaiting, bufferDays, ma
     total += toNumber(manualOverride);
   }
   return total + toNumber(bufferDays);
+}
+
+/**
+ * Adds business days to a date, skipping configured weekends and holidays.
+ * @param {Date|string} startDate 
+ * @param {number} daysToAdd 
+ * @param {Object} factorySettings - contains weeklyOffDays (array of numbers 0=Sun..6=Sat) and holidays (array of "YYYY-MM-DD")
+ */
+export function addWorkingDays(startDate, daysToAdd, factorySettings = {}) {
+  const date = new Date(startDate);
+  
+  // Default to Sunday (0) and Saturday (6) if not configured
+  const offDays = factorySettings.weeklyOffDays || [0, 6]; 
+  const holidays = factorySettings.holidays || []; // e.g. ["2026-12-25"]
+
+  let remainingDays = daysToAdd;
+  
+  if (remainingDays === 0) {
+     while (
+      offDays.includes(date.getDay()) || 
+      holidays.includes(date.toISOString().split('T')[0])
+    ) {
+      date.setDate(date.getDate() + 1);
+    }
+    return date;
+  }
+
+  while (remainingDays > 0) {
+    date.setDate(date.getDate() + 1);
+    
+    const isOffDay = offDays.includes(date.getDay());
+    const isHoliday = holidays.includes(date.toISOString().split('T')[0]);
+    
+    if (!isOffDay && !isHoliday) {
+      remainingDays--;
+    }
+  }
+  
+  return date;
 }

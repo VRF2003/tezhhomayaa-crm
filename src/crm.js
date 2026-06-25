@@ -4,7 +4,7 @@
 
 import { db_quotes, db_buyers, db_settings } from './db.js';
 import { syncOrderToSheets } from './gsheets.js';
-import { calcProductionDays, calculateQueueWaiting, calcFinalCommitment } from './utils/calc.js';
+import { calcProductionDays, calculateQueueWaiting, calcFinalCommitment, addWorkingDays } from './utils/calc.js';
 
 // ── Quote number generator ────────────────────────────────
 function generateQuoteNumber() {
@@ -36,13 +36,17 @@ export async function saveQuote({ buyerName, company, country, currency, items, 
   if (status === 'Confirmed') {
     quoteRecord.production = {
       productionDays,
-      queueWaiting: 0, // Will be recalculated
+      queueWaiting: 0,
       bufferDays: s.deliveryBuffer || 3,
       finalCommitment: 0,
       priority: 'Normal',
       manualOverride: null,
       overrideReason: '',
-      confirmedAt: date
+      confirmedAt: date,
+      productionStatus: 'Scheduled',
+      productionNotes: [],
+      auditLog: [],
+      manualSortIndex: null,
     };
   }
 
@@ -191,7 +195,11 @@ export async function updateQuoteFields(id, fields) {
         priority: 'Normal',
         manualOverride: null,
         overrideReason: '',
-        confirmedAt: new Date().toISOString()
+        confirmedAt: new Date().toISOString(),
+        productionStatus: 'Scheduled',
+        productionNotes: [],
+        auditLog: [],
+        manualSortIndex: null,
       };
     } else if (quote.status !== 'Confirmed') {
       delete quote.production; // Clear if not confirmed
@@ -205,10 +213,11 @@ export async function updateQuoteFields(id, fields) {
   }
 }
 
-// ── Recalculate Production Queue ──────────────────────────
 export async function recalculateProductionQueue() {
   const allQuotes = await db_quotes.getAll();
   const confirmedQuotes = allQuotes.filter(q => q.status === 'Confirmed' && !q.archived);
+  const settings = await db_settings.get() || {};
+  const factorySettings = settings.factoryCalendar || {};
   
   for (const q of confirmedQuotes) {
     if (!q.production) continue;
@@ -221,10 +230,21 @@ export async function recalculateProductionQueue() {
       q.production.manualOverride
     );
 
+    const confirmedAt = q.production.confirmedAt || q.date;
+    const expectedStartDate = addWorkingDays(confirmedAt, queueWaiting, factorySettings).toISOString();
+    const expectedFinishDate = addWorkingDays(expectedStartDate, q.production.productionDays, factorySettings).toISOString();
+
     let needsUpdate = false;
-    if (q.production.queueWaiting !== queueWaiting || q.production.finalCommitment !== finalCommit) {
+    if (
+      q.production.queueWaiting !== queueWaiting || 
+      q.production.finalCommitment !== finalCommit ||
+      q.production.expectedStartDate !== expectedStartDate ||
+      q.production.expectedFinishDate !== expectedFinishDate
+    ) {
       q.production.queueWaiting = queueWaiting;
       q.production.finalCommitment = finalCommit;
+      q.production.expectedStartDate = expectedStartDate;
+      q.production.expectedFinishDate = expectedFinishDate;
       needsUpdate = true;
     }
 

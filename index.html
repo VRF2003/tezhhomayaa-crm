@@ -696,6 +696,67 @@
             </div>
           </div>
         </section>
+        <!-- ══ PRODUCTION VIEW (ERP) ═══════════════════════ -->
+        <section id="production-view" class="view">
+          <div class="dash-panel" style="margin-bottom: 2rem;">
+            <h3 class="dash-panel-title" style="margin-bottom: 1rem;">Factory Capacity Dashboard</h3>
+            <div id="production-kpis" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1rem;">
+              <!-- KPIs rendered via JS -->
+            </div>
+          </div>
+          
+          <div class="filters-bar">
+            <div class="filter-group" style="flex:2">
+              <label>Search Production</label>
+              <input type="text" id="production-search" placeholder="Quote #, Buyer, Priority...">
+            </div>
+            <div class="filter-group">
+              <label>Priority</label>
+              <select id="production-filter-priority">
+                <option value="">All Priorities</option>
+                <option value="VIP">VIP</option>
+                <option value="Urgent">Urgent</option>
+                <option value="Priority">Priority</option>
+                <option value="Normal">Normal</option>
+              </select>
+            </div>
+            <div class="filter-group">
+              <label>Status</label>
+              <select id="production-filter-status">
+                <option value="">All Statuses</option>
+                <option value="Waiting">Waiting</option>
+                <option value="Scheduled">Scheduled</option>
+                <option value="Cutting">Cutting</option>
+                <option value="Printing">Printing</option>
+                <option value="Embroidery">Embroidery</option>
+                <option value="Stitching">Stitching</option>
+                <option value="QC">QC</option>
+                <option value="Packing">Packing</option>
+                <option value="Ready to Dispatch">Ready to Dispatch</option>
+                <option value="Completed">Completed</option>
+                <option value="On Hold">On Hold</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="dash-panel" style="margin-bottom: 2rem; overflow-x: auto;">
+            <h3 class="dash-panel-title" style="margin-bottom: 1rem;">Production Timeline (Drag to reorder)</h3>
+            <div id="production-timeline-container" style="min-width: 800px; display: flex; flex-direction: column; gap: 8px;">
+              <!-- Gantt rendered via JS -->
+            </div>
+          </div>
+
+          <div class="table-container">
+            <table class="data-table">
+              <thead><tr>
+                <th>Quote #</th><th>Buyer</th><th>Priority</th>
+                <th>Status</th><th>Exp. Start</th><th>Exp. Finish</th>
+                <th>Delay (Days)</th><th>Commitment</th><th class="actions-col">Actions</th>
+              </tr></thead>
+              <tbody id="production-table-body"></tbody>
+            </table>
+          </div>
+        </section>
 
         <!-- ══ SETTINGS VIEW (PDF Designer) ═════════════ -->
         <section id="settings-view" class="view">
@@ -811,6 +872,28 @@
             </div>
 
             <div class="dash-panel settings-panel">
+              <h3 class="dash-panel-title" style="color:var(--accent-gold)">Factory Calendar Engine</h3>
+              <p style="font-size:0.85rem; color:var(--text-secondary); margin-bottom:1rem">Define the working calendar used by the Production Scheduling module. These days are skipped when calculating timelines.</p>
+              <div class="filter-group">
+                <label>Weekly Off Days (Check to mark as off)</label>
+                <div style="display: flex; gap: 10px; flex-wrap: wrap; margin-top: 4px;">
+                  <label style="display:flex; align-items:center; gap:4px; text-transform:none"><input type="checkbox" class="set-off-day" value="0" checked> Sun</label>
+                  <label style="display:flex; align-items:center; gap:4px; text-transform:none"><input type="checkbox" class="set-off-day" value="1"> Mon</label>
+                  <label style="display:flex; align-items:center; gap:4px; text-transform:none"><input type="checkbox" class="set-off-day" value="2"> Tue</label>
+                  <label style="display:flex; align-items:center; gap:4px; text-transform:none"><input type="checkbox" class="set-off-day" value="3"> Wed</label>
+                  <label style="display:flex; align-items:center; gap:4px; text-transform:none"><input type="checkbox" class="set-off-day" value="4"> Thu</label>
+                  <label style="display:flex; align-items:center; gap:4px; text-transform:none"><input type="checkbox" class="set-off-day" value="5"> Fri</label>
+                  <label style="display:flex; align-items:center; gap:4px; text-transform:none"><input type="checkbox" class="set-off-day" value="6" checked> Sat</label>
+                </div>
+              </div>
+              <div class="filter-group" style="margin-top: 1rem;">
+                <label>Holidays (YYYY-MM-DD)</label>
+                <textarea id="set-holidays" rows="3" placeholder="e.g. 2026-12-25, 2027-01-01"></textarea>
+                <small style="color:var(--text-secondary); margin-top:4px">Comma separated dates.</small>
+              </div>
+            </div>
+
+            <div class="dash-panel settings-panel">
               <h3 class="dash-panel-title" style="color:var(--accent-gold)">Database Management</h3>
               <p style="font-size:0.85rem; color:var(--text-secondary); margin-bottom:1rem">Backup your CRM data locally or restore from a previous backup. The backup includes all quotes, buyers, and settings.</p>
               <div style="display:flex; flex-direction:column; gap:10px">
@@ -890,12 +973,32 @@
                 <div id="qe-final-commit" style="padding-top: 8px; font-weight: 600; color: var(--primary);">0 Days</div>
               </div>
             </div>
-            <div style="border-top: 1px solid #e2e8f0; padding-top: 12px;">
+            <div style="border-top: 1px solid #e2e8f0; padding-top: 12px; margin-bottom: 12px;">
+              <h4 style="font-size: 13px; margin-bottom: 8px;">Production Status</h4>
+              <select id="qe-production-status">
+                <option value="Waiting">Waiting</option>
+                <option value="Scheduled">Scheduled</option>
+                <option value="Cutting">Cutting</option>
+                <option value="Printing">Printing</option>
+                <option value="Embroidery">Embroidery</option>
+                <option value="Stitching">Stitching</option>
+                <option value="QC">QC</option>
+                <option value="Packing">Packing</option>
+                <option value="Ready to Dispatch">Ready to Dispatch</option>
+                <option value="Completed">Completed</option>
+                <option value="On Hold">On Hold</option>
+              </select>
+            </div>
+            <div style="border-top: 1px solid #e2e8f0; padding-top: 12px; margin-bottom: 12px;">
               <h4 style="font-size: 13px; margin-bottom: 8px;">Manual Override</h4>
               <div style="display: flex; gap: 8px;">
                 <input type="number" id="qe-override-days" placeholder="Override Days" style="width: 120px;">
                 <input type="text" id="qe-override-reason" placeholder="Reason (Required)">
               </div>
+            </div>
+            <div style="border-top: 1px solid #e2e8f0; padding-top: 12px;">
+              <h4 style="font-size: 13px; margin-bottom: 8px;">Add Production Note (Internal Only)</h4>
+              <textarea id="qe-production-note" rows="2" placeholder="e.g. Waiting for Fabric..."></textarea>
             </div>
           </div>
         </div>
