@@ -75,6 +75,11 @@
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
             Reports
           </a></li>
+          <li class="nav-section-label">ERP</li>
+          <li><a class="nav-link" data-target="production-view">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 14.76V3.5a1.5 1.5 0 0 0-3 0v11.26a4.5 4.5 0 1 0 3 0z"/><path d="M12 17v-1"/></svg>
+            Production Planner
+          </a></li>
           <li><a class="nav-link" data-target="settings-view">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-2 2 2 2 0 01-2-2v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 01-2-2 2 2 0 012-2h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 010-2.83 2 2 0 012.83 0l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 012-2 2 2 0 012 2v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 012 2 2 2 0 01-2 2h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
             Settings (Admin)
@@ -859,6 +864,39 @@
               <option value="Confirmed">Confirmed</option>
               <option value="Cancelled">Cancelled</option>
             </select>
+          </div>
+          <div class="filter-group" id="qe-production-panel" style="display: none; background: #f8fafc; padding: 16px; border-radius: 8px; margin-top: 16px;">
+            <h4 style="margin-bottom: 12px; border-bottom: 1px solid #e2e8f0; padding-bottom: 8px;">Production Details</h4>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px;">
+              <div>
+                <label>Priority</label>
+                <select id="qe-priority">
+                  <option value="Normal">Normal</option>
+                  <option value="Priority">Priority</option>
+                  <option value="Urgent">Urgent</option>
+                  <option value="VIP">VIP</option>
+                </select>
+              </div>
+              <div>
+                <label>Queue Waiting</label>
+                <div id="qe-queue-waiting" style="padding-top: 8px; font-weight: 600;">0 Days</div>
+              </div>
+              <div>
+                <label>Production Days</label>
+                <div id="qe-production-days" style="padding-top: 8px; font-weight: 600;">0 Days</div>
+              </div>
+              <div>
+                <label>Final Commitment</label>
+                <div id="qe-final-commit" style="padding-top: 8px; font-weight: 600; color: var(--primary);">0 Days</div>
+              </div>
+            </div>
+            <div style="border-top: 1px solid #e2e8f0; padding-top: 12px;">
+              <h4 style="font-size: 13px; margin-bottom: 8px;">Manual Override</h4>
+              <div style="display: flex; gap: 8px;">
+                <input type="number" id="qe-override-days" placeholder="Override Days" style="width: 120px;">
+                <input type="text" id="qe-override-reason" placeholder="Reason (Required)">
+              </div>
+            </div>
           </div>
         </div>
         <div class="modal-footer">

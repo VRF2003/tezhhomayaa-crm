@@ -4,6 +4,7 @@
 
 import { db_quotes, db_buyers, db_settings } from './db.js';
 import { syncOrderToSheets } from './gsheets.js';
+import { calcProductionDays, calculateQueueWaiting, calcFinalCommitment } from './utils/calc.js';
 
 // ── Quote number generator ────────────────────────────────
 function generateQuoteNumber() {
@@ -22,14 +23,34 @@ export async function saveQuote({ buyerName, company, country, currency, items, 
   const quoteNumber = generateQuoteNumber();
   const date = new Date().toISOString();
 
-  // 1. Save quote
+  const s = await db_settings.get() || {};
+  const productionDays = calcProductionDays(items, s);
+
   const quoteRecord = {
     quoteNumber, date,
     buyerName, company, country, currency, phone: mobile, email, whatsapp, buyerType, status,
     paymentTerms, overrideDelivery,
     items, totalCost, totalValue, totalProfit, marginPct
   };
+
+  if (status === 'Confirmed') {
+    quoteRecord.production = {
+      productionDays,
+      queueWaiting: 0, // Will be recalculated
+      bufferDays: s.deliveryBuffer || 3,
+      finalCommitment: 0,
+      priority: 'Normal',
+      manualOverride: null,
+      overrideReason: '',
+      confirmedAt: date
+    };
+  }
+
   const quoteId = await db_quotes.add(quoteRecord);
+
+  if (status === 'Confirmed') {
+    await recalculateProductionQueue();
+  }
 
   // 2. Upsert buyer
   const existingBuyers = await db_buyers.getByName(buyerName);
@@ -156,8 +177,60 @@ export async function updateQuoteStatus(id, status) {
 export async function updateQuoteFields(id, fields) {
   const quote = await db_quotes.getById(id);
   if (quote) {
+    const wasConfirmed = quote.status === 'Confirmed';
     Object.assign(quote, fields);
+    
+    // Initialize production metadata if changing to Confirmed
+    if (quote.status === 'Confirmed' && (!quote.production || !wasConfirmed)) {
+      const s = await db_settings.get() || {};
+      quote.production = {
+        productionDays: calcProductionDays(quote.items, s),
+        queueWaiting: 0,
+        bufferDays: s.deliveryBuffer || 3,
+        finalCommitment: 0,
+        priority: 'Normal',
+        manualOverride: null,
+        overrideReason: '',
+        confirmedAt: new Date().toISOString()
+      };
+    } else if (quote.status !== 'Confirmed') {
+      delete quote.production; // Clear if not confirmed
+    }
+
     await db_quotes.put(quote);
+
+    if (quote.status === 'Confirmed' || wasConfirmed) {
+      await recalculateProductionQueue();
+    }
+  }
+}
+
+// ── Recalculate Production Queue ──────────────────────────
+export async function recalculateProductionQueue() {
+  const allQuotes = await db_quotes.getAll();
+  const confirmedQuotes = allQuotes.filter(q => q.status === 'Confirmed' && !q.archived);
+  
+  for (const q of confirmedQuotes) {
+    if (!q.production) continue;
+    
+    const queueWaiting = calculateQueueWaiting(q, allQuotes);
+    const finalCommit = calcFinalCommitment(
+      q.production.productionDays, 
+      queueWaiting, 
+      q.production.bufferDays, 
+      q.production.manualOverride
+    );
+
+    let needsUpdate = false;
+    if (q.production.queueWaiting !== queueWaiting || q.production.finalCommitment !== finalCommit) {
+      q.production.queueWaiting = queueWaiting;
+      q.production.finalCommitment = finalCommit;
+      needsUpdate = true;
+    }
+
+    if (needsUpdate) {
+      await db_quotes.put(q);
+    }
   }
 }
 

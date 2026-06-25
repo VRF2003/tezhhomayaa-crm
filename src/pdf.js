@@ -1,5 +1,5 @@
 import html2pdf from 'html2pdf.js';
-import { toNumber, calcLineTotal, formatCurrency, calcDeliveryTimeline, calcItemDeliveryTimeline } from './utils/calc.js';
+import { toNumber, calcLineTotal, formatCurrency, calcProductionDays, calcItemProductionDays } from './utils/calc.js';
 import { logoBase64 } from './logoBase64.js';
 
 /**
@@ -282,16 +282,18 @@ export async function generateLuxuryPDF(quote, mode, settings, rates) {
             <td style="padding: 4px 0;">${quote.paymentTerms || settings?.payment}</td>
           </tr>` : ''}
           ${(() => {
-            const buffer = settings?.deliveryBuffer || 3;
-            const calcDays = calcDeliveryTimeline(quote.items, settings);
-            const baseDays = quote.overrideDelivery != null ? quote.overrideDelivery : calcDays;
-            if (baseDays > 0) {
-              const lowerDays = baseDays + 1;
-              const upperDays = baseDays + buffer;
+            let finalCommit = calcProductionDays(quote.items, settings) + toNumber(settings?.deliveryBuffer || 0); // default draft
+            if (quote.production && quote.production.finalCommitment) {
+              finalCommit = quote.production.finalCommitment;
+            }
+            if (quote.overrideDelivery != null) {
+              finalCommit = quote.overrideDelivery; // legacy override
+            }
+            if (finalCommit > 0) {
               return `
               <tr>
-                <td style="width: 150px; font-weight: 600; color: ${theadCol}; padding: 4px 0;">Estimated Delivery:</td>
-                <td style="padding: 4px 0;">${lowerDays}–${upperDays} Days</td>
+                <td style="width: 150px; font-weight: 600; color: ${theadCol}; padding: 4px 0;">Delivery Timeline:</td>
+                <td style="padding: 4px 0;">${finalCommit} Days from Order Confirmation</td>
               </tr>`;
             }
             return '';

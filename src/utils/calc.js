@@ -66,12 +66,12 @@ export function formatCurrency(value, currency, rates) {
 }
 
 /**
- * Calculates the maximum delivery timeline across all items in an order.
+ * Calculates the total factory production days for an order's items based on quantity and lead times.
  * @param {Array} items - Array of order items
  * @param {Object} pdfSettings - Global settings containing silhouette lead times
  * @param {number} fallbackLeadTime - Fallback lead time if neither product nor silhouette has one
  */
-export function calcDeliveryTimeline(items, pdfSettings, fallbackLeadTime = 7) {
+export function calcProductionDays(items, pdfSettings, fallbackLeadTime = 7) {
   if (!items || items.length === 0) return 0;
   
   const silLeadTimes = pdfSettings?.silhouetteLeadTimes || {};
@@ -124,8 +124,8 @@ export function calcDeliveryTimeline(items, pdfSettings, fallbackLeadTime = 7) {
   return totalOrderTimeline;
 }
 
-// Helper to calculate timeline for a single item or grouped quantity
-export function calcItemDeliveryTimeline(qty, p, pdfSettings, fallbackLeadTime = 7) {
+// Helper to calculate production days for a single item or grouped quantity
+export function calcItemProductionDays(qty, p, pdfSettings, fallbackLeadTime = 7) {
   const silLeadTimes = pdfSettings?.silhouetteLeadTimes || {};
   const silMoqs = pdfSettings?.silhouetteMoqs || {};
   
@@ -147,4 +147,66 @@ export function calcItemDeliveryTimeline(qty, p, pdfSettings, fallbackLeadTime =
   if (silMoqs[key]) moq = silMoqs[key];
   
   return Math.ceil((qty / moq) * leadTime);
+}
+
+/**
+ * Calculates the total queue waiting time for a target order, given all quotes.
+ * It filters for Confirmed orders, sorts them by priority and confirmation date, 
+ * and sums the production days of all orders ahead of the target order.
+ */
+export function calculateQueueWaiting(targetQuote, allQuotes) {
+  // Priority Mapping
+  const priorityScore = {
+    'VIP': 4,
+    'Urgent': 3,
+    'Priority': 2,
+    'Normal': 1
+  };
+  
+  const getScore = (q) => priorityScore[q.production?.priority || 'Normal'] || 1;
+  const getConfirmationDate = (q) => q.production?.confirmedAt || q.date;
+
+  // Find all confirmed orders
+  const confirmedQueue = allQuotes.filter(q => 
+    q.status === 'Confirmed' && 
+    q.id !== targetQuote.id // Exclude self
+  );
+
+  // Sort queue by Priority first (desc), then Confirmation Date (asc)
+  confirmedQueue.sort((a, b) => {
+    const scoreA = getScore(a);
+    const scoreB = getScore(b);
+    if (scoreA !== scoreB) {
+      return scoreB - scoreA; // Higher priority first
+    }
+    // Tie-breaker: oldest confirmation date first
+    return new Date(getConfirmationDate(a)) - new Date(getConfirmationDate(b));
+  });
+
+  // Where does targetQuote fit in this queue?
+  let queueWaiting = 0;
+  const targetScore = getScore(targetQuote);
+  const targetDate = new Date(getConfirmationDate(targetQuote));
+
+  for (const q of confirmedQueue) {
+    const qScore = getScore(q);
+    const qDate = new Date(getConfirmationDate(q));
+    
+    // Is 'q' ahead of 'targetQuote'?
+    if (qScore > targetScore || (qScore === targetScore && qDate < targetDate)) {
+      queueWaiting += (q.production?.productionDays || 0);
+    }
+  }
+
+  return queueWaiting;
+}
+
+/**
+ * Calculates the final committed delivery timeline.
+ */
+export function calcFinalCommitment(productionDays, queueWaiting, bufferDays, manualOverride) {
+  if (manualOverride != null && manualOverride !== '') {
+    return toNumber(manualOverride);
+  }
+  return productionDays + queueWaiting + toNumber(bufferDays);
 }

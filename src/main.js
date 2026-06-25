@@ -4,7 +4,7 @@ import { openDB, db_quotes, db_buyers, db_settings, executeMigrations, exportDat
 import { saveQuote, getReport, deleteQuote, updateQuoteFields, archiveQuote, restoreQuote, duplicateQuote, archiveBuyer, deleteBuyer, updateBuyerFields } from './crm.js';
 import { testGoogleSheetsConnection, syncOrderToSheets } from './gsheets.js';
 import { generateLuxuryPDF } from './pdf.js';
-import { toNumber, calcLineTotal, calcSizeTotal, formatCurrency, calcDeliveryTimeline } from './utils/calc.js';
+import { toNumber, calcLineTotal, calcSizeTotal, formatCurrency, calcProductionDays, calculateQueueWaiting, calcFinalCommitment } from './utils/calc.js';
 import { initGlobalSearch } from './search.js';
 
 // ── State ──────────────────────────────────────────────────
@@ -171,6 +171,7 @@ function activateView(targetId) {
   if (targetId === 'orders-view')    renderOrders();
   if (targetId === 'archived-view')  renderArchivedOrders();
   if (targetId === 'reports-view')   renderReports();
+  if (targetId === 'production-view') renderProductionDashboard();
   if (targetId === 'settings-view')  console.log('[View] Rendering Settings');
   
   } catch(err) {
@@ -745,9 +746,13 @@ function updateOrderViews() {
   if (quoteItemCount)      quoteItemCount.textContent     = totalQty;
   if (quoteTotalCost)      quoteTotalCost.textContent     = formatCur(totalCost);
   
-  const calcDelivery = calcDeliveryTimeline(orderItems, pdfSettings);
+  const productionDays = calcProductionDays(orderItems, pdfSettings);
+  let finalCommit = productionDays + toNumber(pdfSettings.deliveryBuffer || 0);
+  if (q.production) {
+    finalCommit = q.production.finalCommitment;
+  }
   const quoteCalcDel = document.getElementById('quote-calc-delivery');
-  if (quoteCalcDel) quoteCalcDel.textContent = calcDelivery;
+  if (quoteCalcDel) quoteCalcDel.textContent = finalCommit;
   if (quoteTotalSelling)   quoteTotalSelling.textContent  = formatCur(totalValue);
   if (quoteTotalProfit)    quoteTotalProfit.textContent   = !pdfSettings?.optHideMargin ? formatCur(totalProfit) : '—';
   if (quoteOverallMargin)  quoteOverallMargin.textContent = !pdfSettings?.optHideMargin ? `${overallMargin.toFixed(2)}%` : '—';
@@ -1177,6 +1182,29 @@ function openQuoteEditModal(quote) {
   if (typeEl)   typeEl.value   = quote.buyerType || '';
   if (statusEl) statusEl.value = quote.status || 'Draft';
 
+  const prodPanel = document.getElementById('qe-production-panel');
+  if (prodPanel) {
+    if (quote.status === 'Confirmed' && quote.production) {
+      prodPanel.style.display = 'block';
+      const qePriority = document.getElementById('qe-priority');
+      const qeQueueWaiting = document.getElementById('qe-queue-waiting');
+      const qeProductionDays = document.getElementById('qe-production-days');
+      const qeFinalCommit = document.getElementById('qe-final-commit');
+      const qeOverrideDays = document.getElementById('qe-override-days');
+      const qeOverrideReason = document.getElementById('qe-override-reason');
+
+      if (qePriority) qePriority.value = quote.production.priority || 'Normal';
+      if (qeQueueWaiting) qeQueueWaiting.textContent = `${quote.production.queueWaiting || 0} Days`;
+      if (qeProductionDays) qeProductionDays.textContent = `${quote.production.productionDays || 0} Days`;
+      if (qeFinalCommit) qeFinalCommit.textContent = `${quote.production.finalCommitment || 0} Days`;
+      
+      if (qeOverrideDays) qeOverrideDays.value = quote.production.manualOverride || '';
+      if (qeOverrideReason) qeOverrideReason.value = quote.production.overrideReason || '';
+    } else {
+      prodPanel.style.display = 'none';
+    }
+  }
+
   document.getElementById('qe-save').onclick = async () => {
     const email = emlEl?.value.trim() || '';
     if (emlEl && email && !/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(email)) {
@@ -1194,11 +1222,32 @@ function openQuoteEditModal(quote) {
       buyerType: typeEl?.value || '',
       status:    statusEl?.value || 'Draft',
     };
+
+    // If changing production fields
+    if (quote.status === 'Confirmed' && quote.production && prodPanel?.style.display !== 'none') {
+      const qePriority = document.getElementById('qe-priority')?.value;
+      const overrideVal = document.getElementById('qe-override-days')?.value;
+      const overrideReason = document.getElementById('qe-override-reason')?.value;
+      
+      if (overrideVal && !overrideReason) {
+        showToast('Please provide a reason for the manual override.', true);
+        return;
+      }
+      
+      if (!fields.production) fields.production = { ...quote.production };
+      fields.production.priority = qePriority || 'Normal';
+      fields.production.manualOverride = overrideVal ? Number(overrideVal) : null;
+      fields.production.overrideReason = overrideReason || '';
+    }
+
     try {
       await updateQuoteFields(quote.id, fields);
       modal.classList.add('hidden');
       showToast('✓ Quote updated successfully.');
       renderOrders(ordersSearch?.value || '');
+      if (typeof renderProductionDashboard === 'function') {
+        renderProductionDashboard();
+      }
     } catch (err) {
       showToast(`Error: ${err.message}`, true);
     }
@@ -2503,6 +2552,79 @@ document.addEventListener('keydown', (e) => {
     document.getElementById('buyer-delete-modal')?.classList.add('hidden');
   }
 });
+
+// ── Production Planner Dashboard ──────────────────────────
+async function renderProductionDashboard() {
+  const r = await getReport();
+  const confirmedOrders = r.allQuotes.filter(q => q.status === 'Confirmed' && !q.archived);
+  
+  const totalReservedDays = confirmedOrders.reduce((sum, q) => sum + (q.production?.productionDays || 0), 0);
+  
+  const resDaysEl = document.getElementById('prod-reserved-days');
+  if(resDaysEl) resDaysEl.textContent = totalReservedDays;
+  
+  const qCountEl = document.getElementById('prod-queue-count');
+  if(qCountEl) qCountEl.textContent = confirmedOrders.length;
+  
+  // Calculate next available date (today + totalReservedDays)
+  const nextDate = new Date();
+  nextDate.setDate(nextDate.getDate() + totalReservedDays);
+  const nxtEl = document.getElementById('prod-next-avail');
+  if (nxtEl) nxtEl.textContent = formatDate(nextDate.toISOString());
+
+  renderProductionQueue(confirmedOrders);
+}
+
+function renderProductionQueue(confirmedOrders) {
+  const tbody = document.getElementById('production-queue-tbody');
+  if (!tbody) return;
+
+  // Sort queue by Priority first (desc), then Confirmation Date (asc)
+  const priorityScore = { 'VIP': 4, 'Urgent': 3, 'Priority': 2, 'Normal': 1 };
+  const getScore = (q) => priorityScore[q.production?.priority || 'Normal'] || 1;
+  const getConfirmationDate = (q) => q.production?.confirmedAt || q.date;
+
+  const sortedQueue = [...confirmedOrders].sort((a, b) => {
+    const scoreA = getScore(a);
+    const scoreB = getScore(b);
+    if (scoreA !== scoreB) return scoreB - scoreA;
+    return new Date(getConfirmationDate(a)) - new Date(getConfirmationDate(b));
+  });
+
+  tbody.innerHTML = sortedQueue.length === 0
+    ? `<tr><td colspan="9" class="empty-state">Queue is empty. Confirm orders to build queue.</td></tr>`
+    : sortedQueue.map((q, idx) => `
+      <tr data-id="${q.id}">
+        <td style="color:var(--accent-gold); font-family:monospace">${q.quoteNumber}</td>
+        <td style="font-weight:500">${q.buyerName}</td>
+        <td>${formatDate(q.production?.confirmedAt || q.date)}</td>
+        <td><span class="status-badge" style="background: var(--bg-card); color: var(--text-dark); border: 1px solid var(--border-light)">${q.production?.priority || 'Normal'}</span></td>
+        <td>${q.production?.queueWaiting || 0} Days</td>
+        <td>${q.production?.productionDays || 0} Days</td>
+        <td>${q.production?.bufferDays || 0} Days</td>
+        <td style="font-weight:700; color:var(--primary)">${q.production?.finalCommitment || 0} Days</td>
+        <td class="actions-col">
+          <button class="action-btn action-btn--edit" data-action="open-prod-quote" data-id="${q.id}" title="Edit Order">✏️</button>
+        </td>
+      </tr>`).join('');
+
+  tbody.onclick = (e) => {
+    const btn = e.target.closest('[data-action]');
+    if (!btn) return;
+    const id = parseInt(btn.dataset.id);
+    const quote = sortedQueue.find(q => q.id === id);
+    if (btn.dataset.action === 'open-prod-quote' && quote) {
+      if (!quote.production) {
+         updateQuoteFields(quote.id, { status: 'Confirmed' }).then(() => {
+             showToast('Migrated order to ERP production engine.');
+             renderProductionDashboard();
+         });
+      } else {
+         openQuoteEditor(quote);
+      }
+    }
+  };
+}
 
 // ── Run ────────────────────────────────────────────────────
 init();
