@@ -1206,7 +1206,7 @@ function openQuoteEditModal(quote) {
 
   document.getElementById('qe-save').onclick = async () => {
     const email = emlEl?.value.trim() || '';
-    if (emlEl && email && !/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(email)) {
+    if (emlEl && email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       showToast('Please enter a valid email address.', true);
       return;
     }
@@ -2390,7 +2390,7 @@ function openBuyerEditModal(buyer) {
 
   document.getElementById('be-save').onclick = async () => {
     const email = emlEl?.value.trim() || '';
-    if (emlEl && email && !/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(email)) {
+    if (emlEl && email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       showToast('Please enter a valid email address.', true);
       return;
     }
