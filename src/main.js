@@ -1761,6 +1761,7 @@ function setupEventListeners() {
       email: quoteEmail?.value.trim() || '',
       id: 'DRAFT',
       status: 'Draft',
+      date: new Date().toISOString(),
       items: orderItems,
       paymentTerms: document.getElementById('quote-payment-terms')?.value.trim() || '',
       overrideDelivery: document.getElementById('quote-override-delivery')?.value ? parseInt(document.getElementById('quote-override-delivery').value, 10) : null

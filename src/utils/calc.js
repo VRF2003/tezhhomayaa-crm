@@ -166,7 +166,7 @@ export function calculateQueueWaiting(targetQuote, allQuotes) {
   };
   
   const getScore = (q) => priorityScore[q.production?.priority || 'Normal'] || 1;
-  const getConfirmationDate = (q) => q.production?.confirmedAt || q.date;
+  const getConfirmationDate = (q) => q.production?.confirmedAt || q.date || new Date().toISOString();
 
   // Find all confirmed orders
   const confirmedQueue = allQuotes.filter(q => 
