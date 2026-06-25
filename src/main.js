@@ -1590,6 +1590,68 @@ function setupEventListeners() {
     });
   });
 
+  // Cloud Migration Logic
+  const btnMigrateCloud = document.getElementById('btn-migrate-cloud');
+  const migrationStatus = document.getElementById('migration-status');
+  if (btnMigrateCloud) {
+    btnMigrateCloud.addEventListener('click', async () => {
+      const confirmMigrate = confirm("Are you sure you want to push all local data to the Live Database? This cannot be undone.");
+      if (!confirmMigrate) return;
+      
+      btnMigrateCloud.disabled = true;
+      btnMigrateCloud.textContent = "Migrating...";
+      migrationStatus.style.color = 'var(--text-color)';
+      migrationStatus.textContent = "Connecting to Hostinger...";
+
+      try {
+        const HOST = 'https://b2b.tezhomaya.com';
+        
+        // Migrate Buyers
+        migrationStatus.textContent = "Migrating Buyers...";
+        const buyers = await DatabaseService.getBuyers();
+        for (const b of buyers) {
+           await fetch(`${HOST}/backend/api/buyers.php`, {
+             method: 'POST',
+             headers: { 'Content-Type': 'application/json' },
+             body: JSON.stringify(b)
+           });
+        }
+
+        // Migrate Products
+        migrationStatus.textContent = "Migrating Products...";
+        const products = await DatabaseService.getProducts();
+        for (const p of products) {
+           await fetch(`${HOST}/backend/api/products.php`, {
+             method: 'POST',
+             headers: { 'Content-Type': 'application/json' },
+             body: JSON.stringify(p)
+           });
+        }
+
+        // Migrate Quotes
+        migrationStatus.textContent = "Migrating Quotes & Orders...";
+        const quotes = await DatabaseService.getQuotes();
+        for (const q of quotes) {
+           await fetch(`${HOST}/backend/api/quotes.php`, {
+             method: 'POST',
+             headers: { 'Content-Type': 'application/json' },
+             body: JSON.stringify(q)
+           });
+        }
+
+        migrationStatus.style.color = '#10b981';
+        migrationStatus.textContent = "Migration Complete! All data is now in MySQL.";
+        btnMigrateCloud.textContent = "Done";
+      } catch (err) {
+        console.error(err);
+        migrationStatus.style.color = '#ef4444';
+        migrationStatus.textContent = "Migration Failed: " + err.message;
+        btnMigrateCloud.disabled = false;
+        btnMigrateCloud.textContent = "Retry Migration";
+      }
+    });
+  }
+
   // Settings Save Button
   const saveSetBtn = document.getElementById('save-settings-btn');
   if (saveSetBtn) {
