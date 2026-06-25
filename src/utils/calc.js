@@ -207,8 +207,9 @@ export function calculateQueueWaiting(targetQuote, allQuotes) {
  * Calculates the final committed delivery timeline.
  */
 export function calcFinalCommitment(productionDays, queueWaiting, bufferDays, manualOverride) {
+  let total = productionDays + queueWaiting;
   if (manualOverride != null && manualOverride !== '') {
-    return toNumber(manualOverride);
+    total += toNumber(manualOverride);
   }
-  return productionDays + queueWaiting + toNumber(bufferDays);
+  return total + toNumber(bufferDays);
 }

@@ -287,15 +287,11 @@ export async function generateLuxuryPDF(quote, mode, settings, rates) {
             const buffer = (bufferStr !== undefined && bufferStr !== '') ? toNumber(bufferStr) : 3;
 
             if (quote.production) {
-               if (quote.production.manualOverride != null && quote.production.manualOverride !== '') {
-                 baseDays = toNumber(quote.production.manualOverride);
-               } else {
-                 // The engine stores finalCommitment = productionDays + queueWaiting + bufferDays
+                 // The engine stores finalCommitment = productionDays + queueWaiting + override + bufferDays
                  // The baseDays is finalCommitment minus the buffer
                  baseDays = quote.production.finalCommitment - quote.production.bufferDays;
-               }
             } else if (quote.overrideDelivery != null && quote.overrideDelivery !== '') {
-               baseDays = toNumber(quote.overrideDelivery);
+               baseDays += toNumber(quote.overrideDelivery);
             }
 
             if (baseDays > 0) {
