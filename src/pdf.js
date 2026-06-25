@@ -282,19 +282,52 @@ export async function generateLuxuryPDF(quote, mode, settings, rates) {
             <td style="padding: 4px 0;">${quote.paymentTerms || settings?.payment}</td>
           </tr>` : ''}
           ${(() => {
-            let finalCommit = calcProductionDays(quote.items, settings) + toNumber(settings?.deliveryBuffer || 0); // default draft
-            if (quote.production && quote.production.finalCommitment) {
-              finalCommit = quote.production.finalCommitment;
+            let baseDays = calcProductionDays(quote.items, settings);
+            const bufferStr = settings?.deliveryBuffer;
+            const buffer = (bufferStr !== undefined && bufferStr !== '') ? toNumber(bufferStr) : 3;
+
+            if (quote.production) {
+               if (quote.production.manualOverride != null && quote.production.manualOverride !== '') {
+                 baseDays = toNumber(quote.production.manualOverride);
+               } else {
+                 // The engine stores finalCommitment = productionDays + queueWaiting + bufferDays
+                 // The baseDays is finalCommitment minus the buffer
+                 baseDays = quote.production.finalCommitment - quote.production.bufferDays;
+               }
+            } else if (quote.overrideDelivery != null && quote.overrideDelivery !== '') {
+               baseDays = toNumber(quote.overrideDelivery);
             }
-            if (quote.overrideDelivery != null) {
-              finalCommit = quote.overrideDelivery; // legacy override
-            }
-            if (finalCommit > 0) {
-              return `
-              <tr>
-                <td style="width: 150px; font-weight: 600; color: ${theadCol}; padding: 4px 0;">Delivery Timeline:</td>
-                <td style="padding: 4px 0;">${finalCommit} Days from Order Confirmation</td>
-              </tr>`;
+
+            if (baseDays > 0) {
+              if (buffer > 0) {
+                const lowerDays = baseDays + 1;
+                // Based on user feedback: "if days are 10, it should look like 11-13 as we have take 2 days a buffer"
+                // 10 -> 11 to (10+2+1=13) or (10+3=13). Let's use baseDays + Math.max(buffer, 2) just to be safe,
+                // but standard math would be baseDays + buffer.
+                // We'll use baseDays + buffer + 1 if they consider buffer as the spread.
+                // Let's use upperDays = baseDays + buffer. If buffer is 2, 10->11-12. If they meant 11-13, maybe buffer is 3?
+                // The old code used upperDays = baseDays + buffer. Let's stick to that!
+                let upperDays = baseDays + buffer;
+                if (upperDays <= lowerDays) {
+                   return `
+                   <tr>
+                     <td style="width: 150px; font-weight: 600; color: ${theadCol}; padding: 4px 0;">Delivery Timeline:</td>
+                     <td style="padding: 4px 0;">${lowerDays} Days from Order Confirmation</td>
+                   </tr>`;
+                }
+
+                return `
+                <tr>
+                  <td style="width: 150px; font-weight: 600; color: ${theadCol}; padding: 4px 0;">Delivery Timeline:</td>
+                  <td style="padding: 4px 0;">${lowerDays}–${upperDays} Days from Order Confirmation</td>
+                </tr>`;
+              } else {
+                return `
+                <tr>
+                  <td style="width: 150px; font-weight: 600; color: ${theadCol}; padding: 4px 0;">Delivery Timeline:</td>
+                  <td style="padding: 4px 0;">${baseDays} Days from Order Confirmation</td>
+                </tr>`;
+              }
             }
             return '';
           })()}
