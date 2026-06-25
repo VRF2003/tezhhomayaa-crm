@@ -712,10 +712,26 @@
 
             <div class="dash-panel settings-panel">
               <h3 class="dash-panel-title">Branding Assets</h3>
-              <div class="filter-group"><label>Company Logo</label><input type="file" id="set-logo" accept="image/*"></div>
-              <div class="filter-group"><label>Watermark Logo</label><input type="file" id="set-watermark" accept="image/*"></div>
-              <div class="filter-group"><label>Signature Image</label><input type="file" id="set-signature" accept="image/*"></div>
-              <div class="filter-group"><label>Company Stamp</label><input type="file" id="set-stamp" accept="image/*"></div>
+              <div class="filter-group">
+                <label>Company Logo</label>
+                <input type="file" id="set-logo" accept="image/*">
+                <img id="set-logo-preview" style="display:none; max-height:40px; margin-top:8px; border-radius:4px; object-fit:contain;" />
+              </div>
+              <div class="filter-group">
+                <label>Watermark Logo</label>
+                <input type="file" id="set-watermark" accept="image/*">
+                <img id="set-watermark-preview" style="display:none; max-height:40px; margin-top:8px; border-radius:4px; object-fit:contain;" />
+              </div>
+              <div class="filter-group">
+                <label>Signature Image</label>
+                <input type="file" id="set-signature" accept="image/*">
+                <img id="set-signature-preview" style="display:none; max-height:40px; margin-top:8px; border-radius:4px; object-fit:contain;" />
+              </div>
+              <div class="filter-group">
+                <label>Company Stamp</label>
+                <input type="file" id="set-stamp" accept="image/*">
+                <img id="set-stamp-preview" style="display:none; max-height:40px; margin-top:8px; border-radius:4px; object-fit:contain;" />
+              </div>
             </div>
 
             <div class="dash-panel settings-panel">

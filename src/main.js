@@ -239,6 +239,20 @@ async function loadSettings() {
     if (!pdfSettings.silhouetteMoqs) pdfSettings.silhouetteMoqs = {};
     if (!pdfSettings.silhouetteLeadTimes) pdfSettings.silhouetteLeadTimes = {};
     renderMoqSettings();
+
+    // Show Image Previews
+    const showPreview = (id, url) => {
+      const img = document.getElementById(id);
+      if (img && url) {
+        img.src = url;
+        img.style.display = 'block';
+      }
+    };
+    showPreview('set-logo-preview', s.logoUrl);
+    showPreview('set-watermark-preview', s.watermarkUrl);
+    showPreview('set-signature-preview', s.signatureUrl);
+    showPreview('set-stamp-preview', s.stampUrl);
+
   } catch (err) {
     console.error("Failed to load settings", err);
   }
