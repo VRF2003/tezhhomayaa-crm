@@ -186,6 +186,30 @@ const fileToBase64 = file => new Promise((resolve, reject) => {
   reader.onerror = error => reject(error);
 });
 
+async function uploadToCloudinary(file) {
+  showToast('Uploading image to Cloudinary...', false);
+  const formData = new FormData();
+  formData.append('file', file);
+  
+  try {
+    const response = await fetch('/api/upload', {
+      method: 'POST',
+      body: formData
+    });
+    
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.error || 'Upload failed');
+    }
+    
+    const data = await response.json();
+    return data.secure_url;
+  } catch (err) {
+    console.error("Cloudinary upload error:", err);
+    throw err;
+  }
+}
+
 async function loadSettings() {
   try {
     const s = await db_settings.get() || {};
@@ -313,10 +337,10 @@ async function saveSettings() {
     const sigF = document.getElementById('set-signature').files[0];
     const stampF = document.getElementById('set-stamp').files[0];
 
-    if (logoF) s.logoUrl = await fileToBase64(logoF);
-    if (wmF) s.watermarkUrl = await fileToBase64(wmF);
-    if (sigF) s.signatureUrl = await fileToBase64(sigF);
-    if (stampF) s.stampUrl = await fileToBase64(stampF);
+    if (logoF) s.logoUrl = await uploadToCloudinary(logoF);
+    if (wmF) s.watermarkUrl = await uploadToCloudinary(wmF);
+    if (sigF) s.signatureUrl = await uploadToCloudinary(sigF);
+    if (stampF) s.stampUrl = await uploadToCloudinary(stampF);
 
     await db_settings.put(s);
     pdfSettings = s;
@@ -1804,19 +1828,32 @@ function setupEventListeners() {
   let pmBase64Image = null;
   let productToDelete = null;
 
-  document.getElementById('pm-image')?.addEventListener('change', (e) => {
+  document.getElementById('pm-image')?.addEventListener('change', async (e) => {
     const file = e.target.files[0];
     if (file) {
-      const reader = new FileReader();
-      reader.onload = (ev) => {
-        pmBase64Image = ev.target.result;
+      try {
         const preview = document.getElementById('pm-image-preview');
         if (preview) {
-          preview.src = pmBase64Image;
+          preview.style.opacity = '0.5';
           preview.style.display = 'block';
         }
-      };
-      reader.readAsDataURL(file);
+        
+        // Upload to Cloudinary instantly
+        const secureUrl = await uploadToCloudinary(file);
+        pmBase64Image = secureUrl; // We'll keep the variable name pmBase64Image to avoid breaking other logic, but it now stores a URL.
+        
+        if (preview) {
+          preview.src = secureUrl;
+          preview.style.opacity = '1';
+        }
+        showToast('Product image uploaded securely!', false);
+      } catch (err) {
+        showToast('Image upload failed: ' + err.message, true);
+        e.target.value = '';
+        if (document.getElementById('pm-image-preview')) {
+          document.getElementById('pm-image-preview').style.display = 'none';
+        }
+      }
     }
   });
 
