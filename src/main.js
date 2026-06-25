@@ -1764,7 +1764,10 @@ function setupEventListeners() {
     printClientBtn.addEventListener('click', async () => {
       showToast('Generating Client PDF...');
       try {
-        await generateLuxuryPDF(buildCurrentQuote(), 'client', pdfSettings, exchangeRates);
+        const currentQuote = buildCurrentQuote();
+        const allQuotes = await db_quotes.getAll() || [];
+        currentQuote.estimatedQueueWaiting = calculateQueueWaiting(currentQuote, allQuotes);
+        await generateLuxuryPDF(currentQuote, 'client', pdfSettings, exchangeRates);
       } catch (e) {
         showToast('Failed to generate PDF.', true);
       }
@@ -1774,7 +1777,10 @@ function setupEventListeners() {
     printInternalBtn.addEventListener('click', async () => {
       showToast('Generating Internal PDF...');
       try {
-        await generateLuxuryPDF(buildCurrentQuote(), 'internal', pdfSettings, exchangeRates);
+        const currentQuote = buildCurrentQuote();
+        const allQuotes = await db_quotes.getAll() || [];
+        currentQuote.estimatedQueueWaiting = calculateQueueWaiting(currentQuote, allQuotes);
+        await generateLuxuryPDF(currentQuote, 'internal', pdfSettings, exchangeRates);
       } catch (e) {
         showToast('Failed to generate PDF.', true);
       }

@@ -290,8 +290,13 @@ export async function generateLuxuryPDF(quote, mode, settings, rates) {
                  // The engine stores finalCommitment = productionDays + queueWaiting + override + bufferDays
                  // The baseDays is finalCommitment minus the buffer
                  baseDays = quote.production.finalCommitment - quote.production.bufferDays;
-            } else if (quote.overrideDelivery != null && quote.overrideDelivery !== '') {
-               baseDays += toNumber(quote.overrideDelivery);
+            } else {
+                 if (quote.estimatedQueueWaiting) {
+                    baseDays += quote.estimatedQueueWaiting;
+                 }
+                 if (quote.overrideDelivery != null && quote.overrideDelivery !== '') {
+                    baseDays += toNumber(quote.overrideDelivery);
+                 }
             }
 
             if (baseDays > 0) {

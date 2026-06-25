@@ -948,8 +948,8 @@
               <option value="Cancelled">Cancelled</option>
             </select>
           </div>
-          <div class="filter-group" id="qe-production-panel" style="display: none; background: #f8fafc; padding: 16px; border-radius: 8px; margin-top: 16px;">
-            <h4 style="margin-bottom: 12px; border-bottom: 1px solid #e2e8f0; padding-bottom: 8px;">Production Details</h4>
+          <div class="filter-group" id="qe-production-panel" style="display: none; background: var(--bg-card); padding: 16px; border-radius: 8px; margin-top: 16px; border: 1px solid var(--border-color);">
+            <h4 style="margin-bottom: 12px; border-bottom: 1px solid var(--border-color); padding-bottom: 8px; color: var(--text-primary);">Production Details</h4>
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px;">
               <div>
                 <label>Priority</label>
@@ -962,19 +962,19 @@
               </div>
               <div>
                 <label>Queue Waiting</label>
-                <div id="qe-queue-waiting" style="padding-top: 8px; font-weight: 600;">0 Days</div>
+                <div id="qe-queue-waiting" style="padding-top: 8px; font-weight: 600; color: var(--text-primary);">0 Days</div>
               </div>
               <div>
                 <label>Production Days</label>
-                <div id="qe-production-days" style="padding-top: 8px; font-weight: 600;">0 Days</div>
+                <div id="qe-production-days" style="padding-top: 8px; font-weight: 600; color: var(--text-primary);">0 Days</div>
               </div>
               <div>
                 <label>Final Commitment</label>
-                <div id="qe-final-commit" style="padding-top: 8px; font-weight: 600; color: var(--primary);">0 Days</div>
+                <div id="qe-final-commit" style="padding-top: 8px; font-weight: 600; color: var(--accent-gold);">0 Days</div>
               </div>
             </div>
-            <div style="border-top: 1px solid #e2e8f0; padding-top: 12px; margin-bottom: 12px;">
-              <h4 style="font-size: 13px; margin-bottom: 8px;">Production Status</h4>
+            <div style="border-top: 1px solid var(--border-color); padding-top: 12px; margin-bottom: 12px;">
+              <h4 style="font-size: 13px; margin-bottom: 8px; color: var(--text-primary);">Production Status</h4>
               <select id="qe-production-status">
                 <option value="Waiting">Waiting</option>
                 <option value="Scheduled">Scheduled</option>
@@ -989,15 +989,15 @@
                 <option value="On Hold">On Hold</option>
               </select>
             </div>
-            <div style="border-top: 1px solid #e2e8f0; padding-top: 12px; margin-bottom: 12px;">
-              <h4 style="font-size: 13px; margin-bottom: 8px;">Manual Override</h4>
+            <div style="border-top: 1px solid var(--border-color); padding-top: 12px; margin-bottom: 12px;">
+              <h4 style="font-size: 13px; margin-bottom: 8px; color: var(--text-primary);">Manual Override</h4>
               <div style="display: flex; gap: 8px;">
                 <input type="number" id="qe-override-days" placeholder="Override Days" style="width: 120px;">
                 <input type="text" id="qe-override-reason" placeholder="Reason (Required)">
               </div>
             </div>
-            <div style="border-top: 1px solid #e2e8f0; padding-top: 12px;">
-              <h4 style="font-size: 13px; margin-bottom: 8px;">Add Production Note (Internal Only)</h4>
+            <div style="border-top: 1px solid var(--border-color); padding-top: 12px;">
+              <h4 style="font-size: 13px; margin-bottom: 8px; color: var(--text-primary);">Add Production Note (Internal Only)</h4>
               <textarea id="qe-production-note" rows="2" placeholder="e.g. Waiting for Fabric..."></textarea>
             </div>
           </div>
