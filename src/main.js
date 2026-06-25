@@ -747,7 +747,9 @@ function updateOrderViews() {
   if (quoteTotalCost)      quoteTotalCost.textContent     = formatCur(totalCost);
   
   const productionDays = calcProductionDays(orderItems, pdfSettings);
-  let finalCommit = productionDays + toNumber(pdfSettings.deliveryBuffer || 0);
+  const bufStr = pdfSettings?.deliveryBuffer;
+  const buffer = (bufStr !== undefined && bufStr !== '') ? toNumber(bufStr) : 3;
+  let finalCommit = productionDays + buffer;
   
   const quoteCalcDel = document.getElementById('quote-calc-delivery');
   if (quoteCalcDel) quoteCalcDel.textContent = finalCommit;
@@ -825,6 +827,7 @@ async function handleSaveQuote() {
   const marginPct  = totalValue > 0 ? (totalProfit / totalValue) * 100 : 0;
 
   const items = orderItems.map(i => ({
+    product:     i.product,
     productName: i.product.productName,
     styleCode:   i.product.styleCode,
     design:      i.product.design,

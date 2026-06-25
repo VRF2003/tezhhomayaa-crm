@@ -81,21 +81,23 @@ export function calcProductionDays(items, pdfSettings, fallbackLeadTime = 7) {
   const groupLeadTime = {};
   
   for (const item of items) {
-    const p = item.product;
+    const p = item.product || {};
     const qty = toNumber(item.qty);
     
     let key = 'fallback';
     let leadTime = fallbackLeadTime;
     
+    const pName = p.productName || item.productName;
+    
     if (p.leadTime) {
-      key = p.productName; // Product-specific override
+      key = pName; // Product-specific override
       leadTime = p.leadTime;
-    } else if (silLeadTimes[p.silhouette]) {
+    } else if (p.silhouette && silLeadTimes[p.silhouette]) {
       key = p.silhouette;
       leadTime = silLeadTimes[p.silhouette];
-    } else if (silLeadTimes[p.productName]) {
-      key = p.productName;
-      leadTime = silLeadTimes[p.productName];
+    } else if (pName && silLeadTimes[pName]) {
+      key = pName;
+      leadTime = silLeadTimes[pName];
     }
     
     groupQty[key] = (groupQty[key] || 0) + qty;
