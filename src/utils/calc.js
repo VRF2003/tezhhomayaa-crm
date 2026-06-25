@@ -168,11 +168,14 @@ export function calculateQueueWaiting(targetQuote, allQuotes) {
   const getScore = (q) => priorityScore[q.production?.priority || 'Normal'] || 1;
   const getConfirmationDate = (q) => q.production?.confirmedAt || q.date || new Date().toISOString();
 
-  // Find all confirmed orders
+  // Find all confirmed orders, excluding targetQuote if it's in the DB
   const confirmedQueue = allQuotes.filter(q => 
     q.status === 'Confirmed' && 
-    q.id !== targetQuote.id // Exclude self
+    q.id !== targetQuote.id
   );
+  
+  // Add targetQuote to the queue to see where it lands
+  confirmedQueue.push(targetQuote);
 
   // Sort queue by Manual Sort Index first, then Priority (desc), then Confirmation Date (asc)
   confirmedQueue.sort((a, b) => {
@@ -192,19 +195,13 @@ export function calculateQueueWaiting(targetQuote, allQuotes) {
     return new Date(getConfirmationDate(a)) - new Date(getConfirmationDate(b));
   });
 
-  // Where does targetQuote fit in this queue?
+  // Accumulate production days for everything ahead of the targetQuote
   let queueWaiting = 0;
-  const targetScore = getScore(targetQuote);
-  const targetDate = new Date(getConfirmationDate(targetQuote));
-
   for (const q of confirmedQueue) {
-    const qScore = getScore(q);
-    const qDate = new Date(getConfirmationDate(q));
-    
-    // Is 'q' ahead of 'targetQuote'?
-    if (qScore > targetScore || (qScore === targetScore && qDate < targetDate)) {
-      queueWaiting += (q.production?.productionDays || 0);
+    if (q.id === targetQuote.id) {
+      break; // Found our target, stop accumulating!
     }
+    queueWaiting += (q.production?.productionDays || 0);
   }
 
   return queueWaiting;
