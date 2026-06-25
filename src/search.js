@@ -1,4 +1,4 @@
-import { db_products } from './db.js';
+import { DatabaseService } from './services/DatabaseService.js';
 import { formatCurrency } from './utils/calc.js';
 
 let products = [];
@@ -30,7 +30,7 @@ export async function initGlobalSearch() {
   if (!input || !dropdown) return;
 
   // Load products once
-  products = await db_products.getAll();
+  products = await DatabaseService.getProducts();
 
   // Handle global "/" shortcut
   document.addEventListener('keydown', (e) => {

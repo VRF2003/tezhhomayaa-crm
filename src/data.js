@@ -1,5 +1,5 @@
 import Papa from 'papaparse';
-import { db_products } from './db.js';
+import { DatabaseService } from './services/DatabaseService.js';
 import { toNumber } from './utils/calc.js';
 
 export let products = [];
@@ -9,7 +9,7 @@ export const getUniqueValues = (key) => [...new Set(products.map(p => p[key]).fi
 export async function loadProducts() {
   try {
     // 1. Try to load from IndexedDB
-    products = await db_products.getAll();
+    products = await DatabaseService.getProducts();
     
     // 2. If no products in DB, fallback to CSV
     if (!products || products.length === 0) {
@@ -60,7 +60,7 @@ export async function loadProducts() {
       
       // Save parsed CSV products to IndexedDB for future loads
       for (const p of products) {
-        await db_products.add(p);
+        await DatabaseService.addProduct(p);
       }
     }
     

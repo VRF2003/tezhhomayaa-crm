@@ -1,6 +1,6 @@
 import './style.css';
 import { products, getUniqueValues, loadProducts } from './data.js';
-import { openDB, db_quotes, db_buyers, db_settings, executeMigrations, exportDatabase, importDatabase, db_products } from './db.js';
+import { DatabaseService } from './services/DatabaseService.js';
 import { saveQuote, getReport, deleteQuote, updateQuoteFields, archiveQuote, restoreQuote, duplicateQuote, archiveBuyer, deleteBuyer, updateBuyerFields } from './crm.js';
 import { testGoogleSheetsConnection, syncOrderToSheets } from './gsheets.js';
 import { generateLuxuryPDF, generateInvoicePDF } from './pdf.js';
@@ -217,7 +217,7 @@ async function uploadToCloudinary(file) {
 
 async function loadSettings() {
   try {
-    const s = await db_settings.get() || {};
+    const s = await DatabaseService.getSettings() || {};
     pdfSettings = s;
     if (s.theme) document.getElementById('set-theme').value = s.theme;
     if (s.compName) document.getElementById('set-comp-name').value = s.compName;
@@ -312,7 +312,7 @@ function renderMoqSettings() {
       const sil = e.currentTarget.getAttribute('data-sil');
       delete pdfSettings.silhouetteMoqs[sil];
       delete pdfSettings.silhouetteLeadTimes[sil];
-      await db_settings.put(pdfSettings);
+      await DatabaseService.saveSettings(pdfSettings);
       renderMoqSettings();
       showToast(`Removed rules for ${sil}`);
       if (document.getElementById('builder-view').classList.contains('active')) renderBuilder();
@@ -380,7 +380,7 @@ async function saveSettings() {
     if (sigF) s.signatureUrl = await uploadToCloudinary(sigF);
     if (stampF) s.stampUrl = await uploadToCloudinary(stampF);
 
-    await db_settings.put(s);
+    await DatabaseService.saveSettings(s);
     pdfSettings = s;
     showToast('✓ PDF Settings saved successfully.');
   } catch (err) {
@@ -390,8 +390,8 @@ async function saveSettings() {
 
 // ── Init ───────────────────────────────────────────────────
 async function init() {
-  await openDB();
-  await executeMigrations();
+  await DatabaseService.openDB();
+  await DatabaseService.executeMigrations();
   await loadSettings();
   await loadProducts();
   populateDropdowns();
@@ -1025,7 +1025,7 @@ async function renderBuyers() {
 
 async function openBuyerDrawer(name) {
   if (!buyerDrawer || !drawerBuyerName || !drawerQuotesBody) return;
-  const quotes = await db_quotes.getByBuyer(name);
+  const quotes = await DatabaseService.getQuotesByBuyer(name);
   drawerBuyerName.textContent = `Quotes for: ${name}`;
 
   drawerQuotesBody.innerHTML = quotes.length === 0
@@ -1657,7 +1657,7 @@ function setupEventListeners() {
       if (qty > 0) pdfSettings.silhouetteMoqs[sil] = qty;
       if (leadTime > 0) pdfSettings.silhouetteLeadTimes[sil] = leadTime;
       
-      await db_settings.put(pdfSettings);
+      await DatabaseService.saveSettings(pdfSettings);
       
       silInput.value = '';
       qtyInput.value = '';
@@ -1788,7 +1788,7 @@ function setupEventListeners() {
       showToast('Generating Client PDF...');
       try {
         const currentQuote = buildCurrentQuote();
-        const allQuotes = await db_quotes.getAll() || [];
+        const allQuotes = await DatabaseService.getQuotes() || [];
         currentQuote.estimatedQueueWaiting = calculateQueueWaiting(currentQuote, allQuotes);
         await generateLuxuryPDF(currentQuote, 'client', pdfSettings, exchangeRates);
       } catch (e) {
@@ -1801,7 +1801,7 @@ function setupEventListeners() {
       showToast('Generating Internal PDF...');
       try {
         const currentQuote = buildCurrentQuote();
-        const allQuotes = await db_quotes.getAll() || [];
+        const allQuotes = await DatabaseService.getQuotes() || [];
         currentQuote.estimatedQueueWaiting = calculateQueueWaiting(currentQuote, allQuotes);
         await generateLuxuryPDF(currentQuote, 'internal', pdfSettings, exchangeRates);
       } catch (e) {
@@ -1881,7 +1881,7 @@ function setupEventListeners() {
   if (exportDbBtn) {
     exportDbBtn.addEventListener('click', async () => {
       try {
-        await exportDatabase();
+        await DatabaseService.exportDatabase();
         showToast('✓ Backup exported successfully.');
       } catch (err) {
         showToast(`Export failed: \${err.message}`, true);
@@ -1928,7 +1928,7 @@ function setupEventListeners() {
       btn.textContent = 'Importing...';
       btn.disabled = true;
       try {
-        await importDatabase(pendingImportData);
+        await DatabaseService.importDatabase(pendingImportData);
         importConfirmModal.classList.add('hidden');
         showToast('✓ Backup restored successfully.');
         // Refresh UI
@@ -2061,14 +2061,14 @@ function setupEventListeners() {
       newProd.id = parseInt(editId);
     } else {
       // Check for duplicate style code ONLY when adding new
-      const existing = await db_products.getByStyleCode(pStylecode);
+      const existing = await DatabaseService.getProductByStyleCode(pStylecode);
       if (existing && existing.length > 0) {
         newProd.id = existing[0].id; // Overwrite if it exists
       }
     }
 
     try {
-      await db_products.put(newProd);
+      await DatabaseService.saveProduct(newProd);
       showToast('✓ Product saved successfully.');
       closePmModal();
       await loadProducts();
@@ -2090,7 +2090,7 @@ function setupEventListeners() {
   document.getElementById('pd-confirm')?.addEventListener('click', async () => {
     if (!productToDelete) return;
     try {
-      await db_products.delete(productToDelete.id);
+      await DatabaseService.deleteProduct(productToDelete.id);
       showToast('✓ Product deleted successfully.');
       closePdModal();
       await loadProducts();
@@ -2153,7 +2153,7 @@ function setupEventListeners() {
     const delBtn = e.target.closest('.delete-product-btn');
     if (delBtn) {
       const code = delBtn.getAttribute('data-stylecode');
-      const prodLocal = await db_products.getByStyleCode(code);
+      const prodLocal = await DatabaseService.getProductByStyleCode(code);
       if (!prodLocal || prodLocal.length === 0) {
         return showToast('Cannot delete CSV imported products. Only manually created products can be deleted.', true);
       }
@@ -2822,7 +2822,7 @@ async function handleManualReorder(sortedQueue, draggedIdx, dropIdx) {
       details: `Reordered to position ${i}`
     });
     
-    await db_quotes.put(q);
+    await DatabaseService.saveQuote(q);
   }
   
   showToast('Queue successfully reordered. Recalculating timeline...');
@@ -2832,7 +2832,7 @@ async function handleManualReorder(sortedQueue, draggedIdx, dropIdx) {
 
 // ── Completed Orders Dashboard ──────────────────────────────────
 async function renderCompletedDashboard() {
-  const allQuotes = await db_quotes.getAll() || [];
+  const allQuotes = await DatabaseService.getQuotes() || [];
   
   // A quote is considered "Completed" if its CRM status is 'Completed'
   // OR if its productionStatus is 'Completed'.
@@ -2853,7 +2853,7 @@ async function renderCompletedDashboard() {
       changed = true;
     }
     if (changed) {
-      await db_quotes.put(q);
+      await DatabaseService.saveQuote(q);
       needsGlobalRender = true;
     }
   }

@@ -23,7 +23,7 @@ export async function saveQuote({ buyerName, company, country, currency, items, 
   const quoteNumber = generateQuoteNumber();
   const date = new Date().toISOString();
 
-  const s = await db_settings.get() || {};
+  const s = await DatabaseService.getSettings() || {};
   const productionDays = calcProductionDays(items, s);
 
   const quoteRecord = {
@@ -50,14 +50,14 @@ export async function saveQuote({ buyerName, company, country, currency, items, 
     };
   }
 
-  const quoteId = await db_quotes.add(quoteRecord);
+  const quoteId = await DatabaseService.addQuote(quoteRecord);
 
   if (status === 'Confirmed') {
     await recalculateProductionQueue();
   }
 
   // 2. Upsert buyer
-  const existingBuyers = await db_buyers.getByName(buyerName);
+  const existingBuyers = await DatabaseService.getBuyerByName(buyerName);
   if (existingBuyers.length > 0) {
     const buyer = existingBuyers[0];
     buyer.company     = company || buyer.company;
@@ -71,9 +71,9 @@ export async function saveQuote({ buyerName, company, country, currency, items, 
     buyer.totalQuotes += 1;
     buyer.totalRevenue += totalValue;
     buyer.totalProfit  += totalProfit;
-    await db_buyers.put(buyer);
+    await DatabaseService.saveBuyer(buyer);
   } else {
-    await db_buyers.add({
+    await DatabaseService.addBuyer({
       name: buyerName, company, country, phone: mobile, email, whatsapp, buyerType,
       paymentTerms,
       firstSeen: date, lastSeen: date,
@@ -85,7 +85,7 @@ export async function saveQuote({ buyerName, company, country, currency, items, 
 
   // 3. Auto-sync to Google Sheets if enabled
   try {
-    const s = await db_settings.get();
+    const s = await DatabaseService.getSettings();
     if (s && s.gsheetAutoSync !== false && s.gsheetUrl) {
       // Fire and forget (or await if we want to block, but fire and forget is safer for UX)
       syncOrderToSheets(quoteRecord, s.gsheetUrl).catch(e => console.error("Auto-sync to sheets failed", e));
@@ -100,8 +100,8 @@ export async function saveQuote({ buyerName, company, country, currency, items, 
 // ── Dashboard Report ─────────────────────────────────────
 export async function getReport() {
   const [allDbQuotes, allDbBuyers] = await Promise.all([
-    db_quotes.getAll(),
-    db_buyers.getAll(),
+    DatabaseService.getQuotes(),
+    DatabaseService.getBuyers(),
   ]);
 
   const quotes = allDbQuotes.filter(q => !q.archived);
@@ -165,28 +165,28 @@ export async function getReport() {
 
 // ── Delete a Quote ────────────────────────────────────────
 export async function deleteQuote(id) {
-  await db_quotes.delete(id);
+  await DatabaseService.deleteQuote(id);
 }
 
 // ── Update Quote Status ───────────────────────────────────
 export async function updateQuoteStatus(id, status) {
-  const quote = await db_quotes.getById(id);
+  const quote = await DatabaseService.getQuoteById(id);
   if (quote) {
     quote.status = status;
-    await db_quotes.put(quote);
+    await DatabaseService.saveQuote(quote);
   }
 }
 
 // ── Update Quote Fields ───────────────────────────────────
 export async function updateQuoteFields(id, fields) {
-  const quote = await db_quotes.getById(id);
+  const quote = await DatabaseService.getQuoteById(id);
   if (quote) {
     const wasConfirmed = quote.status === 'Confirmed';
     Object.assign(quote, fields);
     
     // Initialize production metadata if changing to Confirmed
     if (quote.status === 'Confirmed' && (!quote.production || !wasConfirmed)) {
-      const s = await db_settings.get() || {};
+      const s = await DatabaseService.getSettings() || {};
       quote.production = {
         productionDays: calcProductionDays(quote.items, s),
         queueWaiting: 0,
@@ -205,7 +205,7 @@ export async function updateQuoteFields(id, fields) {
       delete quote.production; // Clear if not confirmed
     }
 
-    await db_quotes.put(quote);
+    await DatabaseService.saveQuote(quote);
 
     if (quote.status === 'Confirmed' || wasConfirmed) {
       await recalculateProductionQueue();
@@ -214,9 +214,9 @@ export async function updateQuoteFields(id, fields) {
 }
 
 export async function recalculateProductionQueue() {
-  const allQuotes = await db_quotes.getAll();
+  const allQuotes = await DatabaseService.getQuotes();
   const confirmedQuotes = allQuotes.filter(q => q.status === 'Confirmed' && !q.archived);
-  const settings = await db_settings.get() || {};
+  const settings = await DatabaseService.getSettings() || {};
   const factorySettings = settings.factoryCalendar || {};
   
   for (const q of confirmedQuotes) {
@@ -250,59 +250,59 @@ export async function recalculateProductionQueue() {
     }
 
     if (needsUpdate) {
-      await db_quotes.put(q);
+      await DatabaseService.saveQuote(q);
     }
   }
 }
 
 // ── Archive / Restore Quote ───────────────────────────────
 export async function archiveQuote(id) {
-  const quote = await db_quotes.getById(id);
+  const quote = await DatabaseService.getQuoteById(id);
   if (quote) {
     quote.archived = true;
     quote.archivedAt = new Date().toISOString();
-    await db_quotes.put(quote);
+    await DatabaseService.saveQuote(quote);
   }
 }
 
 export async function restoreQuote(id) {
-  const quote = await db_quotes.getById(id);
+  const quote = await DatabaseService.getQuoteById(id);
   if (quote) {
     quote.archived = false;
     delete quote.archivedAt;
-    await db_quotes.put(quote);
+    await DatabaseService.saveQuote(quote);
   }
 }
 
 // ── Duplicate Quote ───────────────────────────────────────
 export async function duplicateQuote(id) {
-  const quote = await db_quotes.getById(id);
+  const quote = await DatabaseService.getQuoteById(id);
   if (quote) {
     const newQuote = { ...quote };
     delete newQuote.id;
     newQuote.quoteNumber = generateQuoteNumber();
     newQuote.date = new Date().toISOString();
-    await db_quotes.add(newQuote);
+    await DatabaseService.addQuote(newQuote);
   }
 }
 
 // ── Buyer Actions ─────────────────────────────────────────
 export async function archiveBuyer(id) {
-  const buyer = await db_buyers.getById(id);
+  const buyer = await DatabaseService.getBuyerById(id);
   if (buyer) {
     buyer.archived = true;
-    await db_buyers.put(buyer);
+    await DatabaseService.saveBuyer(buyer);
   }
 }
 
 export async function deleteBuyer(id) {
-  await db_buyers.delete(id);
+  await DatabaseService.deleteBuyer(id);
 }
 
 export async function updateBuyerFields(id, fields) {
-  const buyer = await db_buyers.getById(id);
+  const buyer = await DatabaseService.getBuyerById(id);
   if (buyer) {
     Object.assign(buyer, fields);
-    await db_buyers.put(buyer);
+    await DatabaseService.saveBuyer(buyer);
   }
 }
