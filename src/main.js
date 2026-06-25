@@ -3,7 +3,7 @@ import { products, getUniqueValues, loadProducts } from './data.js';
 import { openDB, db_quotes, db_buyers, db_settings, executeMigrations, exportDatabase, importDatabase, db_products } from './db.js';
 import { saveQuote, getReport, deleteQuote, updateQuoteFields, archiveQuote, restoreQuote, duplicateQuote, archiveBuyer, deleteBuyer, updateBuyerFields } from './crm.js';
 import { testGoogleSheetsConnection, syncOrderToSheets } from './gsheets.js';
-import { generateLuxuryPDF } from './pdf.js';
+import { generateLuxuryPDF, generateInvoicePDF } from './pdf.js';
 import { toNumber, calcLineTotal, calcSizeTotal, formatCurrency, calcProductionDays, calculateQueueWaiting, calcFinalCommitment } from './utils/calc.js';
 import { initGlobalSearch } from './search.js';
 
@@ -2876,7 +2876,7 @@ async function renderCompletedDashboard() {
 
   renderCompletedQueue(completedOrders);
   
-  if (needsGlobalRender && views.find(v => v.id === 'production-view' && v.classList.contains('active'))) {
+  if (needsGlobalRender && Array.from(views).find(v => v.id === 'production-view' && v.classList.contains('active'))) {
     renderProductionDashboard();
   }
 }
