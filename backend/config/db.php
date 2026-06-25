@@ -1,15 +1,12 @@
 <?php
-/**
- * Database Configuration (Placeholder)
- * This file sets up the PDO connection to the MySQL database
- * using environment variables.
- */
+// backend/config/db.php
+require_once __DIR__ . '/../helpers/cors.php';
+setCorsHeaders();
 
-/*
-$host = getenv('DB_HOST');
-$db   = getenv('DB_DATABASE');
-$user = getenv('DB_USERNAME');
-$pass = getenv('DB_PASSWORD');
+$host = getenv('DB_HOST') ?: 'localhost';
+$db   = getenv('DB_DATABASE') ?: 'tezhhomayaa_erp';
+$user = getenv('DB_USERNAME') ?: 'root';
+$pass = getenv('DB_PASSWORD') ?: '';
 $charset = 'utf8mb4';
 
 $dsn = "mysql:host=$host;dbname=$db;charset=$charset";
@@ -22,6 +19,5 @@ $options = [
 try {
      $pdo = new PDO($dsn, $user, $pass, $options);
 } catch (\PDOException $e) {
-     throw new \PDOException($e->getMessage(), (int)$e->getCode());
+     sendJsonResponse(["error" => "Database connection failed"], 500);
 }
-*/
