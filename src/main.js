@@ -390,8 +390,7 @@ async function saveSettings() {
 
 // ── Init ───────────────────────────────────────────────────
 async function init() {
-  await DatabaseService.openDB();
-  await DatabaseService.executeMigrations();
+
   await loadSettings();
   await loadProducts();
   populateDropdowns();
