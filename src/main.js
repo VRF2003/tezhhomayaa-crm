@@ -748,9 +748,7 @@ function updateOrderViews() {
   
   const productionDays = calcProductionDays(orderItems, pdfSettings);
   let finalCommit = productionDays + toNumber(pdfSettings.deliveryBuffer || 0);
-  if (q.production) {
-    finalCommit = q.production.finalCommitment;
-  }
+  
   const quoteCalcDel = document.getElementById('quote-calc-delivery');
   if (quoteCalcDel) quoteCalcDel.textContent = finalCommit;
   if (quoteTotalSelling)   quoteTotalSelling.textContent  = formatCur(totalValue);
