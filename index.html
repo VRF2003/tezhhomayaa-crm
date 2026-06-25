@@ -80,6 +80,10 @@
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 14.76V3.5a1.5 1.5 0 0 0-3 0v11.26a4.5 4.5 0 1 0 3 0z"/><path d="M12 17v-1"/></svg>
             Production Planner
           </a></li>
+          <li><a class="nav-link" data-target="completed-view">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
+            Completed Orders
+          </a></li>
           <li><a class="nav-link" data-target="settings-view">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-2 2 2 2 0 01-2-2v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 01-2-2 2 2 0 012-2h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 010-2.83 2 2 0 012.83 0l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 012-2 2 2 0 012 2v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 012 2 2 2 0 01-2 2h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
             Settings (Admin)
@@ -649,6 +653,7 @@
                   </button>
                   <button id="drawer-btn-client-pdf" class="load-builder-btn">Download Client PDF</button>
                   <button id="drawer-btn-internal-pdf" class="load-builder-btn">Download Internal PDF</button>
+                  <button id="drawer-btn-invoice-pdf" class="load-builder-btn" style="color:var(--accent-gold); border-color:var(--accent-gold)">Download Final Invoice</button>
                   <button class="load-builder-btn" id="order-sync-gsheet-btn" style="color:var(--accent-green); border-color:var(--accent-green)">
                     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
                     Sync to Sheets
@@ -676,6 +681,58 @@
               </tr></thead>
               <tbody id="archived-table-body"><tr><td colspan="10" class="empty-state">No archived orders.</td></tr></tbody>
             </table>
+          </div>
+        </section>
+
+        <!-- ══ COMPLETED ORDERS & INVOICING VIEW ══════════════════════════ -->
+        <section id="completed-view" class="view hidden">
+          <div class="stat-grid">
+            <div class="stat-card">
+              <div class="stat-icon stat-icon--gold"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg></div>
+              <div class="stat-body">
+                <div class="stat-label">Total Completed Orders</div>
+                <div class="stat-value" id="comp-stat-orders">0</div>
+              </div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-icon stat-icon--blue"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></svg></div>
+              <div class="stat-body">
+                <div class="stat-label">Total Units Produced</div>
+                <div class="stat-value" id="comp-stat-units">0</div>
+              </div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-icon stat-icon--green"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg></div>
+              <div class="stat-body">
+                <div class="stat-label">Total Invoiced Value</div>
+                <div class="stat-value" id="comp-stat-value">$0.00</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="dash-panel" style="margin-top:20px;">
+            <div class="panel-header" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
+              <h3 class="dash-panel-title" style="margin:0;">Completed Orders History</h3>
+              <input type="text" id="completed-search" placeholder="Search orders..." style="padding:8px 12px; border:1px solid var(--border-light); border-radius:6px; background:var(--bg-light); color:var(--text-main); width:250px;">
+            </div>
+            <div class="table-container">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>Quote #</th>
+                    <th>Buyer</th>
+                    <th>Completion Date</th>
+                    <th>Items</th>
+                    <th>Total Qty</th>
+                    <th>Invoice Value</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="completed-table-body">
+                  <tr><td colspan="7" class="empty-state">No completed orders yet.</td></tr>
+                </tbody>
+              </table>
+            </div>
           </div>
         </section>
 
@@ -945,6 +1002,7 @@
               <option value="Draft">Draft</option>
               <option value="Sent">Sent</option>
               <option value="Confirmed">Confirmed</option>
+              <option value="Completed">Completed</option>
               <option value="Cancelled">Cancelled</option>
             </select>
           </div>

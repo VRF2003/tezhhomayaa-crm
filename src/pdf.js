@@ -398,3 +398,221 @@ export async function generateLuxuryPDF(quote, mode, settings, rates) {
     document.body.removeChild(container);
   }
 }
+
+export async function generateInvoicePDF(quote, settings, rates) {
+  // Format currency helper
+  const formatCur = (num) => formatCurrency(num, settings?.currency || 'USD', rates);
+
+  // Theme settings
+  const theme = settings?.theme || 'luxury-beige';
+  let bgColor = '#ffffff';
+  let textColor = '#111111';
+  let accentColor = '#d4af37'; // gold
+  let borderCol = '#eeeeee';
+  let theadCol = '#666666';
+
+  if (theme === 'black-gold') {
+    bgColor = '#111111';
+    textColor = '#f5f5f5';
+    borderCol = '#333333';
+    theadCol = '#aaaaaa';
+  } else if (theme === 'minimal-white') {
+    accentColor = '#000000';
+    borderCol = '#e0e0e0';
+  } else if (theme === 'fashion-week') {
+    bgColor = '#faf9f6';
+    accentColor = '#b5651d';
+    theadCol = '#888888';
+  } else if (theme === 'middle-east') {
+    bgColor = '#fffdf7';
+    accentColor = '#c19a6b';
+    borderCol = '#e8dfd5';
+  }
+
+  const items = quote.items || [];
+  
+  let qrcodeHtml = '';
+  if (settings?.optQr !== false) {
+    qrcodeHtml = `<img src="https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=Invoice_${quote.quoteNumber}" style="width:50px;height:50px; border-radius:4px;" />`;
+  }
+
+  let itemRows = '';
+  items.forEach((item, index) => {
+    const qty = item.qty || 0;
+    const price = item.unitPrice || 0;
+    const total = qty * price;
+    const imgHtml = (settings?.optImages !== false && item.product?.image) 
+      ? `<img src="${item.product.image}" style="width:40px;height:40px;object-fit:cover;border-radius:4px;display:block;margin-bottom:6px;" />`
+      : `<div style="width:40px;height:40px;background:#f5f5f5;border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:8px;color:#aaa;margin-bottom:6px;">No Img</div>`;
+
+    itemRows += `
+      <tr>
+        <td style="padding: 16px 0; border-bottom: 1px solid ${borderCol}; vertical-align: top;">
+          ${imgHtml}
+          <div style="font-weight: 600; font-size: 13px; color: ${textColor}; margin-bottom: 2px;">${index + 1} &nbsp; ${item.productName}</div>
+          <div style="font-size: 11px; color: ${theadCol}; line-height: 1.4;">
+            Style: ${item.styleCode}<br>
+            Design: ${item.design || '—'} | Colour: ${item.colour || '—'}<br>
+            Sizes: ${item.sizes ? Object.entries(item.sizes).filter(([_,v])=>v>0).map(([k,v])=> k.toUpperCase() + ':' + v).join(' ') : '—'}
+          </div>
+        </td>
+        <td style="padding: 16px 0; border-bottom: 1px solid ${borderCol}; text-align: center; vertical-align: top; font-size: 13px;">${qty}</td>
+        <td style="padding: 16px 0; border-bottom: 1px solid ${borderCol}; text-align: right; vertical-align: top; font-size: 13px;">${formatCur(price)}</td>
+        <td style="padding: 16px 0; border-bottom: 1px solid ${borderCol}; text-align: right; vertical-align: top; font-weight: 600; font-size: 13px; color: ${textColor};">${formatCur(total)}</td>
+      </tr>
+    `;
+  });
+
+  const totalQty = items.reduce((s, i) => s + (i.qty || 0), 0);
+  const grandTotal = quote.totalValue || items.reduce((s, i) => s + ((i.qty||0) * (i.unitPrice||0)), 0);
+
+  // Extract Advance Payment Percentage
+  let advancePct = 0;
+  let termsStr = quote.paymentTerms || settings?.payment || '';
+  let pctMatch = termsStr.match(/(\d+)%/);
+  if (pctMatch) {
+    advancePct = parseInt(pctMatch[1], 10);
+  }
+  
+  const advancePaid = (grandTotal * advancePct) / 100;
+  const balanceDue = grandTotal - advancePaid;
+
+  const htmlContent = `
+    <div style="font-family: 'Inter', system-ui, sans-serif; max-width: 800px; margin: 0 auto; background: ${bgColor}; color: ${textColor}; padding: 30px; line-height: 1.5;">
+      
+      <!-- HEADER -->
+      <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 40px; border-bottom: 2px solid ${borderCol}; padding-bottom: 20px;">
+        <div>
+          <h1 style="font-family: 'Playfair Display', serif; font-size: 28px; margin: 0 0 4px 0; font-weight: 600; color: ${textColor}; letter-spacing: -0.5px;">COMMERCIAL INVOICE</h1>
+        </div>
+        ${settings?.logoUrl ? `<img src="${settings.logoUrl}" style="max-height: 60px; max-width: 200px; object-fit: contain;" />` : `<div style="font-family: 'Playfair Display', serif; font-size: 24px; font-weight: 700; color: ${accentColor}; letter-spacing: -1px; text-transform: uppercase;">${settings?.compName || 'TEZHHOMAYAA'}</div>`}
+      </div>
+
+      <!-- INFO SECTION -->
+      <div style="display: flex; justify-content: space-between; margin-bottom: 40px; font-size: 12px;">
+        <div style="flex: 1;">
+          <div style="font-size: 10px; font-weight: 600; color: ${theadCol}; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px;">Bill To</div>
+          <div style="font-weight: 600; font-size: 14px; margin-bottom: 4px;">${quote.buyerName || '—'}</div>
+          <div>${quote.company || ''}</div>
+          <div>${quote.country || ''}</div>
+          <div>P: ${quote.phone || quote.mobile || '—'}</div>
+          <div>E: ${quote.email || '—'}</div>
+        </div>
+        <div style="flex: 1; text-align: right;">
+          <div style="font-size: 10px; font-weight: 600; color: ${theadCol}; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px;">Invoice Details</div>
+          <table style="width: 100%; border-collapse: collapse; font-size: 12px;">
+            <tr><td style="text-align: right; color: ${theadCol}; padding-right: 12px; width: 60%;">Invoice No:</td><td style="text-align: left; font-weight: 600;">INV-${quote.quoteNumber || 'DRAFT'}</td></tr>
+            <tr><td style="text-align: right; color: ${theadCol}; padding-right: 12px;">Date:</td><td style="text-align: left;">${new Date().toLocaleDateString('en-US', {month:'long', day:'numeric', year:'numeric'})}</td></tr>
+            <tr><td style="text-align: right; color: ${theadCol}; padding-right: 12px;">Status:</td><td style="text-align: left;">Completed</td></tr>
+            <tr><td style="text-align: right; color: ${theadCol}; padding-right: 12px;">Currency:</td><td style="text-align: left;">${settings?.currency || 'USD'}</td></tr>
+          </table>
+          <div style="margin-top: 10px; display: flex; justify-content: flex-end;">${qrcodeHtml}</div>
+        </div>
+      </div>
+
+      <!-- ITEMS TABLE -->
+      <table style="width: 100%; border-collapse: collapse; margin-bottom: 40px;">
+        <thead>
+          <tr style="border-bottom: 2px solid ${borderCol};">
+            <th style="text-align: left; padding: 12px 0; font-size: 10px; font-weight: 600; color: ${theadCol}; text-transform: uppercase; letter-spacing: 1px;">Description</th>
+            <th style="text-align: center; padding: 12px 0; font-size: 10px; font-weight: 600; color: ${theadCol}; text-transform: uppercase; letter-spacing: 1px; width: 10%;">Qty</th>
+            <th style="text-align: right; padding: 12px 0; font-size: 10px; font-weight: 600; color: ${theadCol}; text-transform: uppercase; letter-spacing: 1px; width: 20%;">Unit Price</th>
+            <th style="text-align: right; padding: 12px 0; font-size: 10px; font-weight: 600; color: ${theadCol}; text-transform: uppercase; letter-spacing: 1px; width: 20%;">Total</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${itemRows}
+        </tbody>
+      </table>
+
+      <!-- TOTALS -->
+      <div style="display: flex; justify-content: flex-end; margin-bottom: 40px; page-break-inside: avoid;">
+        <table style="width: 350px; border-collapse: collapse; font-size: 13px;">
+          <tr>
+            <td style="padding: 8px 0; color: ${theadCol};">Total Items</td>
+            <td style="padding: 8px 0; text-align: right; font-weight: 600;">${totalQty}</td>
+          </tr>
+          <tr>
+            <td style="padding: 12px 0; font-weight: 600; color: ${textColor}; border-bottom: 1px solid ${borderCol}; border-top: 1px solid ${borderCol}; font-size: 14px;">Grand Total</td>
+            <td style="padding: 12px 0; text-align: right; font-weight: 700; color: ${textColor}; border-bottom: 1px solid ${borderCol}; border-top: 1px solid ${borderCol}; font-size: 14px;">${formatCur(grandTotal)}</td>
+          </tr>
+          ${advancePaid > 0 ? (
+          '<tr>' +
+            '<td style="padding: 8px 0; color: ' + theadCol + '; border-bottom: 1px solid ' + borderCol + ';">Advance Paid (' + advancePct + '%)</td>' +
+            '<td style="padding: 8px 0; text-align: right; color: ' + theadCol + '; border-bottom: 1px solid ' + borderCol + ';">-' + formatCur(advancePaid) + '</td>' +
+          '</tr>' +
+          '<tr>' +
+            '<td style="padding: 16px 0; font-weight: 700; color: ' + accentColor + '; font-size: 16px;">BALANCE DUE</td>' +
+            '<td style="padding: 16px 0; text-align: right; font-weight: 700; color: ' + accentColor + '; font-size: 16px;">' + formatCur(balanceDue) + '</td>' +
+          '</tr>'
+          ) : ''}
+        </table>
+      </div>
+
+      <!-- COMMERCIAL TERMS -->
+      <div style="border-top: 2px solid ${borderCol}; padding-top: 20px; page-break-inside: avoid;">
+        <div style="font-size: 10px; font-weight: 600; color: ${theadCol}; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 12px;">Payment Instructions</div>
+        <table style="width: 100%; border-collapse: collapse; font-size: 12px; line-height: 1.6;">
+          <tr>
+            <td style="width: 150px; color: ${theadCol}; vertical-align: top; padding-bottom: 6px;">Payment Terms:</td>
+            <td style="vertical-align: top; padding-bottom: 6px; font-weight: 500;">${quote.paymentTerms || settings?.payment || '—'}</td>
+          </tr>
+          <tr>
+            <td style="width: 150px; color: ${theadCol}; vertical-align: top; padding-bottom: 6px;">Shipping Terms:</td>
+            <td style="vertical-align: top; padding-bottom: 6px; font-weight: 500;">${settings?.shipping || '—'}</td>
+          </tr>
+        </table>
+      </div>
+
+      <!-- SIGNATURE -->
+      ${settings?.signatureUrl || settings?.stampUrl ? (
+      '<div style="margin-top: 60px; display: flex; justify-content: flex-end; page-break-inside: avoid;">' +
+        '<div style="text-align: center; width: 250px;">' +
+          '<div style="height: 100px; position: relative; border-bottom: 1px solid ' + borderCol + '; margin-bottom: 8px;">' +
+            (settings?.signatureUrl ? '<img src="' + settings.signatureUrl + '" style="position: absolute; bottom: 0; left: 50%; transform: translateX(-50%); max-height: 80px; max-width: 150px; object-fit: contain; z-index: 2;" />' : '') +
+            (settings?.stampUrl ? '<img src="' + settings.stampUrl + '" style="position: absolute; bottom: 10px; right: -20px; max-height: 80px; max-width: 100px; object-fit: contain; opacity: 0.8; z-index: 1;" />' : '') +
+          '</div>' +
+          '<div style="font-size: 11px; font-weight: 600; color: ' + theadCol + '; text-transform: uppercase; letter-spacing: 1px;">Authorized Signatory</div>' +
+        '</div>' +
+      '</div>'
+      ) : ''}
+
+      <!-- FOOTER -->
+      <div style="margin-top: 60px; padding-top: 20px; border-top: 1px solid ${borderCol}; font-size: 11px; color: ${theadCol}; text-align: center; page-break-inside: avoid;">
+        <div style="font-weight: 600; font-size: 12px; margin-bottom: 4px; color: ${textColor};">${settings?.compName || 'TEZHHOMAYAA'}</div>
+        <div style="margin-bottom: 8px;">${settings?.tagline || 'Bridge To Luxury'}</div>
+        <div>${settings?.address || 'Malaysia Fashion Show HQ'}</div>
+        <div style="margin-top: 4px;">
+          ${settings?.email ? settings.email + ' | ' : ''}
+          ${settings?.phone ? settings.phone + ' | ' : ''}
+          ${settings?.website || 'www.tezhhomayaa.com'}
+        </div>
+      </div>
+    </div>
+  `;
+
+  // Create a hidden container for html2pdf
+  const container = document.createElement('div');
+  container.innerHTML = htmlContent;
+  container.style.position = 'absolute';
+  container.style.left = '-9999px';
+  document.body.appendChild(container);
+  const filename = `Invoice_${quote.buyerName || 'Draft'}_${quote.id || 'New'}.pdf`.replace(/\s+/g, '_');
+
+  const opt = {
+    margin:       10, // mm
+    filename:     filename,
+    image:        { type: 'jpeg', quality: 0.98 },
+    html2canvas:  { scale: 2, useCORS: true },
+    jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
+  };
+
+  try {
+    await html2pdf().from(container.firstElementChild).set(opt).save();
+  } catch (error) {
+    console.error("PDF Generation Error:", error);
+    alert("Error generating Invoice PDF. Check console.");
+  } finally {
+    document.body.removeChild(container);
+  }
+}

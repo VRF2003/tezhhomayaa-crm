@@ -168,10 +168,11 @@ export function calculateQueueWaiting(targetQuote, allQuotes) {
   const getScore = (q) => priorityScore[q.production?.priority || 'Normal'] || 1;
   const getConfirmationDate = (q) => q.production?.confirmedAt || q.date || new Date().toISOString();
 
-  // Find all confirmed orders, excluding targetQuote if it's in the DB
+  // Find all confirmed orders, excluding targetQuote and Completed orders
   const confirmedQueue = allQuotes.filter(q => 
     q.status === 'Confirmed' && 
-    q.id !== targetQuote.id
+    q.id !== targetQuote.id &&
+    q.production?.productionStatus !== 'Completed'
   );
   
   // Add targetQuote to the queue to see where it lands

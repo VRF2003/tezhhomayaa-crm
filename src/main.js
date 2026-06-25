@@ -97,6 +97,8 @@ const orderDrawerItems = document.getElementById('order-drawer-items');
 const orderLoadBuilderBtn = document.getElementById('order-load-builder-btn');
 
 // ── Utility ────────────────────────────────────────────────
+window.generateInvoicePDF = generateInvoicePDF;
+
 const formatCur = (num) => formatCurrency(num, currentCurrency, exchangeRates);
 
 const formatDate = (iso) => {
@@ -144,6 +146,7 @@ const viewTitleMap = {
   'orders-view':    'Orders',
   'archived-view':  'Archived Orders',
   'reports-view':   'Reports',
+  'completed-view': 'Completed Orders & Invoicing',
 };
 
 function activateView(targetId) {
@@ -172,6 +175,7 @@ function activateView(targetId) {
   if (targetId === 'archived-view')  renderArchivedOrders();
   if (targetId === 'reports-view')   renderReports();
   if (targetId === 'production-view') renderProductionDashboard();
+  if (targetId === 'completed-view') renderCompletedDashboard();
   if (targetId === 'settings-view')  console.log('[View] Rendering Settings');
   
   } catch(err) {
@@ -1141,6 +1145,17 @@ document.getElementById('drawer-btn-client-pdf')?.addEventListener('click', () =
 });
 document.getElementById('drawer-btn-internal-pdf')?.addEventListener('click', () => {
   if (currentOrderDrawerQuote) window.printSavedQuote(currentOrderDrawerQuote, 'internal');
+});
+document.getElementById('drawer-btn-invoice-pdf')?.addEventListener('click', async () => {
+  if (currentOrderDrawerQuote) {
+    showToast('Generating Invoice...');
+    try {
+      await window.generateInvoicePDF(currentOrderDrawerQuote, pdfSettings, exchangeRates);
+    } catch (error) {
+      console.error(error);
+      showToast('Failed to generate Invoice.', true);
+    }
+  }
 });
 
 // ── Load Into Builder from Order Drawer ─────────────────────
@@ -2813,6 +2828,116 @@ async function handleManualReorder(sortedQueue, draggedIdx, dropIdx) {
   showToast('Queue successfully reordered. Recalculating timeline...');
   await recalculateProductionQueue();
   renderProductionDashboard();
+}
+
+// ── Completed Orders Dashboard ──────────────────────────────────
+async function renderCompletedDashboard() {
+  const allQuotes = await db_quotes.getAll() || [];
+  
+  // A quote is considered "Completed" if its CRM status is 'Completed'
+  // OR if its productionStatus is 'Completed'.
+  let completedOrders = allQuotes.filter(q => 
+    q.status === 'Completed' || q.production?.productionStatus === 'Completed'
+  );
+  
+  // Sync the statuses if they are mismatched to keep data clean
+  let needsGlobalRender = false;
+  for (const q of completedOrders) {
+    let changed = false;
+    if (q.status !== 'Completed') {
+      q.status = 'Completed';
+      changed = true;
+    }
+    if (q.production && q.production.productionStatus !== 'Completed') {
+      q.production.productionStatus = 'Completed';
+      changed = true;
+    }
+    if (changed) {
+      await db_quotes.put(q);
+      needsGlobalRender = true;
+    }
+  }
+
+  // Calculate KPIs
+  const totalOrders = completedOrders.length;
+  const totalUnits = completedOrders.reduce((sum, q) => sum + (q.items?.reduce((s, i) => s + (i.qty||0), 0) || 0), 0);
+  const totalValue = completedOrders.reduce((sum, q) => sum + (q.totalValue || 0), 0);
+
+  const statOrdersEl = document.getElementById('comp-stat-orders');
+  const statUnitsEl = document.getElementById('comp-stat-units');
+  const statValueEl = document.getElementById('comp-stat-value');
+
+  if (statOrdersEl) statOrdersEl.textContent = totalOrders;
+  if (statUnitsEl) statUnitsEl.textContent = totalUnits;
+  if (statValueEl) statValueEl.textContent = formatCur(totalValue);
+
+  // Sorting
+  completedOrders.sort((a, b) => new Date(b.production?.expectedFinishDate || b.date) - new Date(a.production?.expectedFinishDate || a.date));
+
+  renderCompletedQueue(completedOrders);
+  
+  if (needsGlobalRender && views.find(v => v.id === 'production-view' && v.classList.contains('active'))) {
+    renderProductionDashboard();
+  }
+}
+
+function renderCompletedQueue(completedOrders) {
+  const tbody = document.getElementById('completed-table-body');
+  const searchEl = document.getElementById('completed-search');
+  if (!tbody || !searchEl) return;
+
+  const searchQ = searchEl.value.toLowerCase().trim();
+  
+  let filtered = completedOrders.filter(q => {
+    return q.quoteNumber.toLowerCase().includes(searchQ) || q.buyerName.toLowerCase().includes(searchQ);
+  });
+
+  tbody.innerHTML = filtered.length === 0
+    ? `<tr><td colspan="7" class="empty-state">No completed orders found.</td></tr>`
+    : filtered.map(q => {
+        const itemsCount = q.items ? q.items.length : 0;
+        const totalQty = q.items ? q.items.reduce((s, i) => s + (i.qty||0), 0) : 0;
+        const finishDate = q.production?.expectedFinishDate ? formatDate(q.production.expectedFinishDate) : (q.date ? formatDate(q.date) : '—');
+        
+        return `<tr data-id="${q.id}">
+          <td style="color:var(--accent-gold); font-family:monospace">${q.quoteNumber}</td>
+          <td style="font-weight:500">${q.buyerName}</td>
+          <td>${finishDate}</td>
+          <td>${itemsCount}</td>
+          <td>${totalQty}</td>
+          <td class="currency" style="color:var(--accent-green)">${formatCur(q.totalValue)}</td>
+          <td class="actions-col">
+            <button class="action-btn action-btn--edit" data-action="download-invoice" data-id="${q.id}" title="Download Final Invoice" style="width:auto; padding:0 8px;">📄 Invoice</button>
+            <button class="action-btn action-btn--edit" data-action="view-completed-order" data-id="${q.id}" title="View Order Details">👁️</button>
+          </td>
+        </tr>`;
+      }).join('');
+
+  tbody.onclick = async (e) => {
+    const btn = e.target.closest('[data-action]');
+    if (!btn) return;
+    const id = parseInt(btn.dataset.id);
+    const quote = filtered.find(q => q.id === id);
+    if (!quote) return;
+
+    if (btn.dataset.action === 'view-completed-order') {
+       openOrderDrawer(quote);
+    } else if (btn.dataset.action === 'download-invoice') {
+       showToast('Generating Invoice...');
+       try {
+         await window.generateInvoicePDF(quote, pdfSettings, exchangeRates);
+       } catch (error) {
+         console.error(error);
+         showToast('Failed to generate Invoice.', true);
+       }
+    }
+  };
+
+  // Bind filter events if not already bound
+  if (!searchEl.dataset.bound) {
+    searchEl.dataset.bound = "true";
+    searchEl.addEventListener('input', () => renderCompletedQueue(completedOrders));
+  }
 }
 
 // ── Run ────────────────────────────────────────────────────

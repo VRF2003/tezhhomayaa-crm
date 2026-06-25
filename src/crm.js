@@ -221,6 +221,7 @@ export async function recalculateProductionQueue() {
   
   for (const q of confirmedQuotes) {
     if (!q.production) continue;
+    if (q.production.productionStatus === 'Completed') continue;
     
     const queueWaiting = calculateQueueWaiting(q, allQuotes);
     const finalCommit = calcFinalCommitment(
