@@ -219,5 +219,24 @@ export const DatabaseService = {
   async getBuyerById(id) {
     const buyers = await this.getBuyers();
     return buyers.find(b => b.id == id);
+  },
+  async getQuotesByBuyer(name) {
+    const buyers = await this.getBuyers();
+    const buyer = buyers.find(b => b.name === name);
+    if (!buyer) return [];
+    const quotes = await this.getQuotes();
+    return quotes.filter(q => q.buyerId == buyer.id);
+  },
+  async exportDatabase() {
+    return {
+      settings: await this.getSettings(),
+      buyers: await this.getBuyers(),
+      products: await this.getProducts(),
+      quotes: await this.getQuotes()
+    };
+  },
+  async importDatabase(data) {
+    console.warn("Cloud import is restricted. Please use the backend migration script.");
+    return true;
   }
 };
