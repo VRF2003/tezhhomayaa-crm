@@ -36,7 +36,8 @@ export const DatabaseService = {
   // ── Buyers ─────────────────────────────────────────
   async getBuyers() {
     try {
-      const res = await fetch(`${API_BASE}/buyers.php`);
+      const ts = new Date().getTime();
+      const res = await fetch(`${API_BASE}/buyers.php?_=${ts}`);
       const data = await res.json() || [];
       return data.map(b => ({
         id: b.id,
@@ -76,7 +77,8 @@ export const DatabaseService = {
   // ── Products ─────────────────────────────────────────
   async getProducts() {
     try {
-      const res = await fetch(`${API_BASE}/products.php`);
+      const ts = new Date().getTime();
+      const res = await fetch(`${API_BASE}/products.php?_=${ts}`);
       const data = await res.json() || [];
       return data.map(p => ({
         id: p.id,

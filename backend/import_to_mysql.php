@@ -17,6 +17,7 @@ if (!$data) {
 }
 
 try {
+    $pdo->exec("SET FOREIGN_KEY_CHECKS=0;");
     $pdo->beginTransaction();
 
     // 1. Import Buyers
@@ -99,6 +100,7 @@ try {
     }
 
     $pdo->commit();
+    $pdo->exec("SET FOREIGN_KEY_CHECKS=1;");
     echo "<h2 style='color:green;'>Migration 100% Successful!</h2>";
     echo "<p>You can now safely delete the backup.json and import_to_mysql.php files from Hostinger.</p>";
 
