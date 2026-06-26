@@ -389,8 +389,95 @@ async function saveSettings() {
 }
 
 // ── Init ───────────────────────────────────────────────────
-async function init() {
+async function checkAuth() {
+  const token = localStorage.getItem('auth_token');
+  if (!token) return false;
+  try {
+    const res = await fetch('/backend/api/auth.php', {
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+    const data = await res.json();
+    return data.valid === true;
+  } catch (e) {
+    return false;
+  }
+}
 
+async function init() {
+  const loginOverlay = document.getElementById('login-overlay');
+  const loginForm = document.getElementById('login-form');
+  const loginError = document.getElementById('login-error');
+  const appContainer = document.getElementById('app');
+
+  // Handle auth expiration from API
+  window.addEventListener('auth-expired', () => {
+    localStorage.removeItem('auth_token');
+    appContainer.style.display = 'none';
+    loginOverlay.classList.remove('hidden');
+  });
+
+  const btnLogout = document.getElementById('btn-logout');
+  if (btnLogout) {
+    btnLogout.addEventListener('click', () => {
+      localStorage.removeItem('auth_token');
+      appContainer.style.display = 'none';
+      loginOverlay.classList.remove('hidden');
+    });
+  }
+
+  if (loginForm) {
+    loginForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const u = document.getElementById('login-username').value;
+      const p = document.getElementById('login-password').value;
+      
+      const submitBtn = document.getElementById('login-submit');
+      const originalText = submitBtn.textContent;
+      submitBtn.textContent = 'Authenticating...';
+      submitBtn.disabled = true;
+
+      try {
+        const res = await fetch('/backend/api/auth.php', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username: u, password: p })
+        });
+        const data = await res.json();
+        if (res.ok && data.success) {
+          localStorage.setItem('auth_token', data.token);
+          loginOverlay.classList.add('hidden');
+          appContainer.style.display = '';
+          loginError.classList.add('hidden');
+          await finishInit();
+        } else {
+          loginError.textContent = data.error || 'Invalid credentials';
+          loginError.classList.remove('hidden');
+        }
+      } catch (err) {
+        loginError.textContent = 'Network error. Please try again.';
+        loginError.classList.remove('hidden');
+      } finally {
+        submitBtn.textContent = originalText;
+        submitBtn.disabled = false;
+      }
+    });
+  }
+
+  const isAuthenticated = await checkAuth();
+  if (isAuthenticated) {
+    loginOverlay.classList.add('hidden');
+    appContainer.style.display = '';
+    await finishInit();
+  } else {
+    appContainer.style.display = 'none';
+    loginOverlay.classList.remove('hidden');
+  }
+}
+
+let isInitialized = false;
+async function finishInit() {
+  if (isInitialized) return;
+  isInitialized = true;
   await loadSettings();
   await loadProducts();
   populateDropdowns();

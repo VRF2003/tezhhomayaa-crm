@@ -8,11 +8,28 @@
 
 const API_BASE = '/backend/api';
 
+async function apiFetch(url, options = {}) {
+  const token = localStorage.getItem('auth_token');
+  const headers = { ...options.headers };
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+  
+  const response = await fetch(url, { ...options, headers });
+  
+  if (response.status === 401) {
+    // Dispatch custom event to trigger login overlay in main.js
+    window.dispatchEvent(new CustomEvent('auth-expired'));
+    throw new Error('Unauthorized');
+  }
+  return response;
+}
+
 export const DatabaseService = {
   // ── Settings ─────────────────────────────────────────
   async getSettings() {
     try {
-      const res = await fetch(`${API_BASE}/settings.php`);
+      const res = await apiFetch(`${API_BASE}/settings.php`);
       if (!res.ok) return {};
       return await res.json();
     } catch (e) {
@@ -22,7 +39,7 @@ export const DatabaseService = {
   },
   async saveSettings(settings) {
     try {
-      const res = await fetch(`${API_BASE}/settings.php`, {
+      const res = await apiFetch(`${API_BASE}/settings.php`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(settings)
@@ -37,7 +54,7 @@ export const DatabaseService = {
   async getBuyers() {
     try {
       const ts = new Date().getTime();
-      const res = await fetch(`${API_BASE}/buyers.php?_=${ts}`);
+      const res = await apiFetch(`${API_BASE}/buyers.php?_=${ts}`);
       const data = await res.json() || [];
       return data.map(b => ({
         id: b.id,
@@ -56,7 +73,7 @@ export const DatabaseService = {
   async saveBuyer(buyer) {
     const isNew = !buyer.id;
     try {
-      const res = await fetch(`${API_BASE}/buyers.php`, {
+      const res = await apiFetch(`${API_BASE}/buyers.php`, {
         method: isNew ? 'POST' : 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(buyer)
@@ -68,7 +85,7 @@ export const DatabaseService = {
   },
   async deleteBuyer(id) {
     try {
-      await fetch(`${API_BASE}/buyers.php?id=${id}`, { method: 'DELETE' });
+      await apiFetch(`${API_BASE}/buyers.php?id=${id}`, { method: 'DELETE' });
     } catch (e) {
       console.error('API Error: deleteBuyer', e);
     }
@@ -78,7 +95,7 @@ export const DatabaseService = {
   async getProducts() {
     try {
       const ts = new Date().getTime();
-      const res = await fetch(`${API_BASE}/products.php?_=${ts}`);
+      const res = await apiFetch(`${API_BASE}/products.php?_=${ts}`);
       const data = await res.json() || [];
       return data.map(p => ({
         id: p.id,
@@ -108,7 +125,7 @@ export const DatabaseService = {
   },
   async getProductByStyleCode(styleCode) {
     try {
-      const res = await fetch(`${API_BASE}/products.php?styleCode=${encodeURIComponent(styleCode)}`);
+      const res = await apiFetch(`${API_BASE}/products.php?styleCode=${encodeURIComponent(styleCode)}`);
       const data = await res.json();
       return data.length > 0 ? data[0] : null;
     } catch (e) {
@@ -118,7 +135,7 @@ export const DatabaseService = {
   async saveProduct(product) {
     const isNew = !product.id;
     try {
-      const res = await fetch(`${API_BASE}/products.php`, {
+      const res = await apiFetch(`${API_BASE}/products.php`, {
         method: isNew ? 'POST' : 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(product)
@@ -130,7 +147,7 @@ export const DatabaseService = {
   },
   async deleteProduct(id) {
     try {
-      await fetch(`${API_BASE}/products.php?id=${id}`, { method: 'DELETE' });
+      await apiFetch(`${API_BASE}/products.php?id=${id}`, { method: 'DELETE' });
     } catch (e) {
       console.error('API Error: deleteProduct', e);
     }
@@ -141,7 +158,7 @@ export const DatabaseService = {
     try {
       const ts = new Date().getTime();
       const [res, buyers, products] = await Promise.all([
-        fetch(`${API_BASE}/quotes.php?_=${ts}`),
+        apiFetch(`${API_BASE}/quotes.php?_=${ts}`),
         this.getBuyers(),
         this.getProducts()
       ]);
@@ -222,7 +239,7 @@ export const DatabaseService = {
     }
 
     try {
-      const res = await fetch(`${API_BASE}/quotes.php`, {
+      const res = await apiFetch(`${API_BASE}/quotes.php`, {
         method: isNew ? 'POST' : 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(quote)
@@ -234,7 +251,7 @@ export const DatabaseService = {
   },
   async deleteQuote(id) {
     try {
-      await fetch(`${API_BASE}/quotes.php?id=${id}`, { method: 'DELETE' });
+      await apiFetch(`${API_BASE}/quotes.php?id=${id}`, { method: 'DELETE' });
     } catch (e) {
       console.error('API Error: deleteQuote', e);
     }
