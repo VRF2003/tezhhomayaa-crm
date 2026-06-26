@@ -148,6 +148,34 @@ export async function getReport() {
     .sort((a, b) => new Date(b.date) - new Date(a.date))
     .slice(0, 5);
 
+  // Compute Buyer Stats
+  const buyerStats = {};
+  allDbQuotes.forEach(q => {
+    const bId = q.buyer_id || q.buyerId || q.buyer?.id; // handle different possible keys just in case
+    if (!bId) return;
+    if (!buyerStats[bId]) {
+      buyerStats[bId] = { totalQuotes: 0, totalRevenue: 0, totalProfit: 0, dates: [] };
+    }
+    buyerStats[bId].totalQuotes += 1;
+    buyerStats[bId].totalRevenue += q.totalValue || 0;
+    buyerStats[bId].totalProfit += q.totalProfit || 0;
+    if (q.date) buyerStats[bId].dates.push(new Date(q.date).getTime());
+  });
+
+  buyers.forEach(b => {
+    const stats = buyerStats[b.id] || { totalQuotes: 0, totalRevenue: 0, totalProfit: 0, dates: [] };
+    b.totalQuotes = stats.totalQuotes;
+    b.totalRevenue = stats.totalRevenue;
+    b.totalProfit = stats.totalProfit;
+    if (stats.dates.length > 0) {
+      b.firstSeen = new Date(Math.min(...stats.dates)).toISOString();
+      b.lastSeen = new Date(Math.max(...stats.dates)).toISOString();
+    } else {
+      b.firstSeen = null;
+      b.lastSeen = null;
+    }
+  });
+
   return {
     totalBuyers:  buyers.length,
     totalQuotes:  quotes.length,

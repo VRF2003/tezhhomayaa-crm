@@ -17,7 +17,7 @@ function requireAuth() {
     if (preg_match('/Bearer\s(\S+)/', $authHeader, $matches)) {
         $token = $matches[1];
         
-        $stmt = $pdo->prepare("SELECT id, token_expires_at FROM users WHERE token = ?");
+        $stmt = $pdo->prepare("SELECT id, token_expires_at FROM erp_users WHERE token = ?");
         $stmt->execute([$token]);
         $user = $stmt->fetch();
 

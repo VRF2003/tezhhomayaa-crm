@@ -5,7 +5,7 @@ require_once __DIR__ . '/config/db.php';
 echo "<h1>Setting up Users Table...</h1>";
 
 try {
-    $pdo->exec("CREATE TABLE IF NOT EXISTS users (
+    $pdo->exec("CREATE TABLE IF NOT EXISTS erp_users (
         id INT AUTO_INCREMENT PRIMARY KEY,
         username VARCHAR(50) UNIQUE NOT NULL,
         password_hash VARCHAR(255) NOT NULL,
@@ -18,12 +18,12 @@ try {
     echo "<p>✅ Users table created successfully.</p>";
 
     // Insert default admin if not exists
-    $stmt = $pdo->prepare("SELECT COUNT(*) FROM users WHERE username = 'admin'");
+    $stmt = $pdo->prepare("SELECT COUNT(*) FROM erp_users WHERE username = 'admin'");
     $stmt->execute();
     if ($stmt->fetchColumn() == 0) {
         $defaultPassword = 'Tezhhomayaa2026!';
         $hash = password_hash($defaultPassword, PASSWORD_BCRYPT);
-        $stmt = $pdo->prepare("INSERT INTO users (username, password_hash, role) VALUES (?, ?, ?)");
+        $stmt = $pdo->prepare("INSERT INTO erp_users (username, password_hash, role) VALUES (?, ?, ?)");
         $stmt->execute(['admin', $hash, 'master']);
         echo "<p>✅ Default master admin account created.</p>";
         echo "<p><strong>Username:</strong> admin</p>";

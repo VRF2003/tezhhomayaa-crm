@@ -13,7 +13,7 @@ if ($method === 'POST') {
         sendJsonResponse(["error" => "Username and password are required"], 400);
     }
 
-    $stmt = $pdo->prepare("SELECT * FROM users WHERE username = ?");
+    $stmt = $pdo->prepare("SELECT * FROM erp_users WHERE username = ?");
     $stmt->execute([$username]);
     $user = $stmt->fetch();
 
@@ -23,7 +23,7 @@ if ($method === 'POST') {
         // Set expiration to 24 hours from now
         $expires = date('Y-m-d H:i:s', time() + 86400);
 
-        $updateStmt = $pdo->prepare("UPDATE users SET token = ?, token_expires_at = ? WHERE id = ?");
+        $updateStmt = $pdo->prepare("UPDATE erp_users SET token = ?, token_expires_at = ? WHERE id = ?");
         $updateStmt->execute([$token, $expires, $user['id']]);
 
         sendJsonResponse([
@@ -43,7 +43,7 @@ if ($method === 'POST') {
     if (preg_match('/Bearer\s(\S+)/', $authHeader, $matches)) {
         $token = $matches[1];
         
-        $stmt = $pdo->prepare("SELECT username, role, token_expires_at FROM users WHERE token = ?");
+        $stmt = $pdo->prepare("SELECT username, role, token_expires_at FROM erp_users WHERE token = ?");
         $stmt->execute([$token]);
         $user = $stmt->fetch();
 
