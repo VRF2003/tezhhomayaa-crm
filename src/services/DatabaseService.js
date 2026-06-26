@@ -198,5 +198,26 @@ export const DatabaseService = {
     } catch (e) {
       console.error('API Error: deleteQuote', e);
     }
+  },
+  
+  // ── Legacy crm.js wrappers ────────────────────────────────
+  async addQuote(quote) {
+    const res = await this.saveQuote(quote);
+    return res ? res.id : null;
+  },
+  async getQuoteById(id) {
+    const quotes = await this.getQuotes();
+    return quotes.find(q => q.id == id);
+  },
+  async addBuyer(buyer) {
+    return await this.saveBuyer(buyer);
+  },
+  async getBuyerByName(name) {
+    const buyers = await this.getBuyers();
+    return buyers.filter(b => b.name === name);
+  },
+  async getBuyerById(id) {
+    const buyers = await this.getBuyers();
+    return buyers.find(b => b.id == id);
   }
 };
