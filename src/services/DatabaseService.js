@@ -139,24 +139,64 @@ export const DatabaseService = {
   // ── Quotes / Orders ─────────────────────────────────────────
   async getQuotes() {
     try {
-      const res = await fetch(`${API_BASE}/quotes.php`);
+      const ts = new Date().getTime();
+      const [res, buyers, products] = await Promise.all([
+        fetch(`${API_BASE}/quotes.php?_=${ts}`),
+        this.getBuyers(),
+        this.getProducts()
+      ]);
       const quotes = await res.json() || [];
-      // Re-map the structure slightly if needed so frontend UI doesn't break
       return quotes.map(q => {
-        // Map items back properly
-        const mappedItems = q.items ? q.items.map(i => ({
-          productId: i.product_id,
-          qty: Number(i.qty),
-          unitPrice: Number(i.unit_price),
-          lineTotal: Number(i.line_total),
-          sizes: typeof i.size_breakdown === 'string' ? JSON.parse(i.size_breakdown) : (i.size_breakdown || {})
-        })) : [];
+        const buyer = buyers.find(b => b.id == q.buyer_id) || {};
+        let tCost = 0;
+        let tProfit = 0;
+
+        const mappedItems = q.items ? q.items.map(i => {
+          const p = products.find(prod => prod.id == i.product_id) || {};
+          const qty = Number(i.qty);
+          const unitP = Number(i.unit_price);
+          const lineTotal = Number(i.line_total) || (qty * unitP);
+          const unitCost = p.finalCost || 0;
+          const lineCost = qty * unitCost;
+          const lineProfit = lineTotal - lineCost;
+          
+          tCost += lineCost;
+          tProfit += lineProfit;
+
+          return {
+            productId: i.product_id,
+            productName: p.productName || 'Unknown Product',
+            styleCode: p.styleCode || '-',
+            category: p.category || '-',
+            fabric: p.fabric || '-',
+            tier: p.tier || '-',
+            finalCost: unitCost,
+            qty: qty,
+            unitPrice: unitP,
+            lineTotal: lineTotal,
+            profit: lineProfit,
+            marginPct: lineTotal > 0 ? (lineProfit / lineTotal) * 100 : 0,
+            sizes: typeof i.size_breakdown === 'string' ? JSON.parse(i.size_breakdown) : (i.size_breakdown || {})
+          };
+        }) : [];
+
+        const totalVal = Number(q.total_value);
 
         return {
           ...q,
+          id: Number(q.id),
           quoteNumber: q.quote_number,
           buyerId: q.buyer_id,
-          totalValue: Number(q.total_value),
+          buyerName: buyer.name || 'Unknown',
+          company: buyer.company || '-',
+          country: buyer.country || '-',
+          phone: buyer.phone || '',
+          email: buyer.email || '',
+          whatsapp: buyer.whatsapp || '',
+          totalValue: totalVal,
+          totalCost: tCost,
+          totalProfit: tProfit,
+          marginPct: totalVal > 0 ? (tProfit / totalVal) * 100 : 0,
           paymentTerms: q.payment_terms,
           shippingTerms: q.shipping_terms,
           items: mappedItems,
