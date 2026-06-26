@@ -24,9 +24,9 @@ export async function syncOrderToSheets(quote, url) {
   // Flatten items for the "Order Items" sheet
   const items = quote.items.map(item => ({
     orderNumber: quote.quoteNumber,
-    product: item.productName,
-    design: item.design || '',
-    colour: item.colour || '',
+    product: item.product?.productName || item.productName || '',
+    design: item.product?.design || item.design || '',
+    colour: item.product?.colour || item.colour || '',
     xs: item.sizes?.xs || 0,
     s: item.sizes?.s || 0,
     m: item.sizes?.m || 0,

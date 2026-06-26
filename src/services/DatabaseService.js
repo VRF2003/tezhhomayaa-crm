@@ -37,7 +37,17 @@ export const DatabaseService = {
   async getBuyers() {
     try {
       const res = await fetch(`${API_BASE}/buyers.php`);
-      return await res.json() || [];
+      const data = await res.json() || [];
+      return data.map(b => ({
+        id: b.id,
+        name: b.name,
+        company: b.company,
+        country: b.country,
+        phone: b.phone,
+        email: b.email,
+        whatsapp: b.whatsapp,
+        buyerType: b.buyer_type
+      }));
     } catch (e) {
       return [];
     }
@@ -67,7 +77,18 @@ export const DatabaseService = {
   async getProducts() {
     try {
       const res = await fetch(`${API_BASE}/products.php`);
-      return await res.json() || [];
+      const data = await res.json() || [];
+      return data.map(p => ({
+        id: p.id,
+        styleCode: p.style_code,
+        productName: p.product_name,
+        category: p.category,
+        design: p.design,
+        colour: p.colour,
+        tier: p.tier,
+        image: p.image_url,
+        baseCost: Number(p.base_cost)
+      }));
     } catch (e) {
       return [];
     }
