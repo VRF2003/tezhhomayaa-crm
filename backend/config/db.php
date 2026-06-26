@@ -4,9 +4,9 @@ require_once __DIR__ . '/../helpers/cors.php';
 setCorsHeaders();
 
 $host = getenv('DB_HOST') ?: 'localhost';
-$db   = getenv('DB_DATABASE') ?: 'tezhhomayaa_erp';
-$user = getenv('DB_USERNAME') ?: 'root';
-$pass = getenv('DB_PASSWORD') ?: '';
+$db   = getenv('DB_DATABASE') ?: 'u543643154_tezhhomayaaerp';
+$user = getenv('DB_USERNAME') ?: 'u543643154_erp_admin';
+$pass = getenv('DB_PASSWORD') ?: 'Victory@2003$#';
 $charset = 'utf8mb4';
 
 $dsn = "mysql:host=$host;dbname=$db;charset=$charset";
