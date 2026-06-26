@@ -33,14 +33,44 @@ try {
 
     // 2. Import Products
     if (!empty($data['products'])) {
-        $stmt = $pdo->prepare("INSERT IGNORE INTO products (id, style_code, product_name, category, design, colour, tier, image_url, base_cost) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
+        $pdo->exec("DROP TABLE IF EXISTS products");
+        $pdo->exec("CREATE TABLE products (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            style_code VARCHAR(100) UNIQUE NOT NULL,
+            product_name VARCHAR(150) NOT NULL,
+            category VARCHAR(50),
+            silhouette VARCHAR(100),
+            override_moq INT,
+            lead_time INT,
+            design VARCHAR(100),
+            colour VARCHAR(100),
+            tier VARCHAR(50),
+            fabric VARCHAR(100),
+            cost DECIMAL(10,2) DEFAULT 0.00,
+            final_cost DECIMAL(10,2) DEFAULT 0.00,
+            retail_price DECIMAL(10,2) DEFAULT 0.00,
+            wholesale50 DECIMAL(10,2) DEFAULT 0.00,
+            wholesale40 DECIMAL(10,2) DEFAULT 0.00,
+            wholesale30 DECIMAL(10,2) DEFAULT 0.00,
+            status VARCHAR(50) DEFAULT 'Active',
+            image_url TEXT,
+            base_cost DECIMAL(10,2) DEFAULT 0.00,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+        )");
+
+        $stmt = $pdo->prepare("INSERT IGNORE INTO products (id, style_code, product_name, category, silhouette, override_moq, lead_time, design, colour, tier, fabric, cost, final_cost, retail_price, wholesale50, wholesale40, wholesale30, status, image_url, base_cost) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
         foreach ($data['products'] as $p) {
             $stmt->execute([
                 $p['id'] ?? null, $p['styleCode'] ?? '', $p['productName'] ?? '', $p['category'] ?? '',
-                $p['design'] ?? '', $p['colour'] ?? '', $p['tier'] ?? '', $p['image'] ?? '', $p['baseCost'] ?? 0
+                $p['silhouette'] ?? null, $p['overrideMoq'] ?? null, $p['leadTime'] ?? null,
+                $p['design'] ?? '', $p['colour'] ?? '', $p['tier'] ?? '', $p['fabric'] ?? '',
+                $p['cost'] ?? 0, $p['finalCost'] ?? 0, $p['retailPrice'] ?? 0,
+                $p['wholesale50'] ?? 0, $p['wholesale40'] ?? 0, $p['wholesale30'] ?? 0,
+                $p['status'] ?? 'Active', $p['image'] ?? '', $p['baseCost'] ?? 0
             ]);
         }
-        echo "<p>✅ Imported " . count($data['products']) . " Products.</p>";
+        echo "<p>✅ Imported " . count($data['products']) . " Products with full pricing details.</p>";
     }
 
     // 3. Import Quotes & Orders
